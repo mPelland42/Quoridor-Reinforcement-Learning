@@ -40,9 +40,9 @@ class Qoridor:
             pygame.draw.circle(self.screen, self.agentColors[i], (self.agents[i][0] * boxSize + boxSize/2 + shift, self.agents[i][1] * boxSize + boxSize/2 + shift), int(boxSize * .25))
         for i in self.walls:
             if i[1] == 2:
-                pygame.draw.rect(self.screen, (178, 178, 1), [i[0]*boxSize + shift + 5, (i[1] + 1)*boxSize + shift, boxSize*2 - 10, 1], 10)
+                pygame.draw.rect(self.screen, (178, 178, 1), [i[0][0]*boxSize + shift + 5, (i[0][1] + 1)*boxSize + shift, boxSize*2 - 10, 1], 10)
             else:
-                pygame.draw.rect(self.screen, (178, 178, 1), [(i[0] + 1) * boxSize + shift, i[1] * boxSize + shift + 5, 1, boxSize*2 - 10], 10)
+                pygame.draw.rect(self.screen, (178, 178, 1), [(i[0][0] + 1) * boxSize + shift, i[0][1] * boxSize + shift + 5, 1, boxSize*2 - 10], 10)
 
     #gets value of a space, returns 7 if out of bounds
     def getSpace(self, space):
@@ -111,7 +111,7 @@ class Qoridor:
     #performs an action by specified agent
     def performAction(self, agent, action):
         if action[0] == 'p':
-            self.movePawn(agent, action[1])
+            self.movePawn(agent, self.tupAdd(self.agents[agent], action[1]))
         else:
             self.wallCounts[agent] -= 1
             self.placeWall(action[1], action[2])
@@ -127,7 +127,7 @@ class Qoridor:
 
     #places a wall at given intersection with set orientation
     def placeWall(self, location, orientation):
-        self.walls.append(location)
+        self.walls.append((location, orientation))
         self.intersections[location[0]][location[1]] = orientation
 
     #returns a complete list of all legal moves given player can make

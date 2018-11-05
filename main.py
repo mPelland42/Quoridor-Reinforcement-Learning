@@ -21,7 +21,6 @@ game.draw()
 #print(game.getLegalMoves(0))
 
 while True:
-    game.performAction(currentAgent, random.choice(game.getLegalMoves(currentAgent)))
     currentAgent = (currentAgent + 1)%2
     screen.fill(0)
     game.draw()
