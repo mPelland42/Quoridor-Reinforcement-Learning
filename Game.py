@@ -1,6 +1,8 @@
 import pygame
 from AStar import AStar
 
+from Agents import Action
+
 class Qoridor:
     def __init__(self, screen):
         self.spaces = [[-1 for x in range(9)] for x in range(9)]
@@ -15,6 +17,11 @@ class Qoridor:
         self.wallCounts = [10, 10]
         self.turn = 1
         self.screen = screen
+        
+        
+    def getGridSize(self):
+        return 9
+        
 
     #returns all neighboring cells
     def getAllNeighbors(self, space):
@@ -37,7 +44,7 @@ class Qoridor:
             for j in range(9):
                 pygame.draw.rect(self.screen, (255, 0, 0), [i*boxSize + shift, j*boxSize + shift, boxSize, boxSize], 10)
         for i in range(len(self.agents)):
-            pygame.draw.circle(self.screen, self.agentColors[i], (self.agents[i][0] * boxSize + boxSize/2 + shift, self.agents[i][1] * boxSize + boxSize/2 + shift), int(boxSize * .25))
+            pygame.draw.circle(self.screen, self.agentColors[i], (int(self.agents[i][0] * boxSize + boxSize/2 + shift), int(self.agents[i][1] * boxSize + boxSize/2 + shift)), int(boxSize * .25))
         for i in self.walls:
             if i[1] == 2:
                 pygame.draw.rect(self.screen, (178, 178, 1), [i[0][0]*boxSize + shift + 5, (i[0][1] + 1)*boxSize + shift, boxSize*2 - 10, 1], 10)
@@ -110,11 +117,11 @@ class Qoridor:
 
     #performs an action by specified agent
     def performAction(self, agent, action):
-        if action[0] == 'p':
-            self.movePawn(agent, self.tupAdd(self.agents[agent], action[1]))
+        if action.getType() == Action.PAWN:
+            self.movePawn(agent, (action.getX(), action.getY()))
         else:
             self.wallCounts[agent] -= 1
-            self.placeWall(action[1], action[2])
+            self.placeWall(action.getX(), action.getY())
 
 
 
