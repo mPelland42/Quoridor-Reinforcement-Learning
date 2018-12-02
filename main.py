@@ -61,33 +61,10 @@ while True:
     drawn = False
     if agents[currentAgent] == AI:
         if random.random() < .5:
-            if (len(game.getPawnMoves(game.agents[currentAgent]))) == 0:
-                screen.fill(0)
-                game.draw(currentAgent, pygame.mouse.get_pos())
-                pygame.display.flip()
-                pygame.display.update()
-                print("wut")
-                game.getPawnMoves(game.agents[currentAgent])
-            try:
-                target = random.choice([('p', x) for x in game.getPawnMoves(game.agents[currentAgent])])
-                prevState = game.performAction(currentAgent, random.choice([('p', x) for x in game.getPawnMoves(game.agents[currentAgent])]))
-            except Exception, e:
-                print("WHAT THE FUCK")
-                screen.fill(0)
-                game.draw(currentAgent, pygame.mouse.get_pos())
-                pygame.display.flip()
-                pygame.display.update()
-                moves = game.getPawnMoves(game.agents[currentAgent])
-                print(game.getPawnMoves(game.agents[currentAgent]))
+            game.performAction(currentAgent, random.choice([('p', x) for x in game.getPawnMoves(game.agents[currentAgent])]))
         else:
-            try:
-                prevState = game.performAction(currentAgent, getRandomAction(currentAgent))
-            except:
-                screen.fill(0)
-                game.draw(currentAgent, pygame.mouse.get_pos())
-                pygame.display.flip()
-                pygame.display.update()
-                prevState = game.performAction(currentAgent, getRandomAction(currentAgent))
+            action = getRandomAction(currentAgent)
+            game.performAction(currentAgent, action)
         if game.endGame() != -1:
             scores[currentAgent] += 1
             print(scores)

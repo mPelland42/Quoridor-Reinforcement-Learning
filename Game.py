@@ -22,7 +22,6 @@ class Qoridor:
         self.wallColor = (101, 67, 33)
         self.lastMaybeMove = ('p', -1, -1)
 
-
     #returns winner if game is over, else returns -1
     def endGame(self):
         if self.agents[0][1] == 8:
@@ -115,21 +114,25 @@ class Qoridor:
                 neighbors.append(self.tupAdd(space, tuple(2*x for x in neighbor)))
             else: #now check diagonal jumps.
                 if neighbor[0] == 0:
-                    if self.getSpace(self.tupAdd(space, (1, neighbor[1]))) == -1:
-                        if self.canMoveTo(space, self.tupAdd(space, neighbor)) and self.canMoveTo(self.tupAdd(space, neighbor), self.tupAdd(space, (1, neighbor[1]))):
-                            neighbors.append(self.tupAdd(space, (1, neighbor[1])))
-                    if self.getSpace([sum(x) for x in zip(space, (-1, neighbor[1]))]) == -1:
-                        if self.canMoveTo(space, self.tupAdd(space, neighbor)) and self.canMoveTo(self.tupAdd(space, neighbor), self.tupAdd(space, (-1, neighbor[1]))):
-                            neighbors.append(self.tupAdd(space, (1, neighbor[1])))
+                    diag = self.tupAdd(space, (1, neighbor[1]))
+                    if self.getSpace(diag) == -1:
+                        if self.canMoveTo(space, self.tupAdd(space, neighbor)) and self.canMoveTo(self.tupAdd(space, neighbor), diag):
+                            neighbors.append(diag)
+                    diag = self.tupAdd(space, (-1, neighbor[1]))
+                    if self.getSpace(diag) == -1:
+                        if self.canMoveTo(space, self.tupAdd(space, neighbor)) and self.canMoveTo(self.tupAdd(space, neighbor), diag):
+                            neighbors.append(diag)
                 else:
-                    if self.getSpace([sum(x) for x in zip(space, (neighbor[0], 1))]) == -1:
+                    diag = self.tupAdd(space, (neighbor[0], 1))
+                    if self.getSpace(diag) == -1:
                         if self.canMoveTo(space, self.tupAdd(space, neighbor)) and self.canMoveTo(
-                                self.tupAdd(space, neighbor), self.tupAdd(space, (neighbor[0], 1))):
-                            neighbors.append(self.tupAdd(space, (neighbor[0], 1)))
-                    if self.getSpace([sum(x) for x in zip(space, (neighbor[0], -1))]) == -1:
+                                self.tupAdd(space, neighbor), diag):
+                            neighbors.append(diag)
+                    diag = self.tupAdd(space, (neighbor[0], -1))
+                    if self.getSpace(diag) == -1:
                         if self.canMoveTo(space, self.tupAdd(space, neighbor)) and self.canMoveTo(
-                                self.tupAdd(space, neighbor), self.tupAdd(space, (neighbor[0], 1))):
-                            neighbors.append(self.tupAdd(space, (neighbor[0], -1)))
+                                self.tupAdd(space, neighbor), diag):
+                            neighbors.append(diag)
         return neighbors
 
     #determine if there's a wall at this intersection.  if offboard, returns no wall
@@ -155,13 +158,11 @@ class Qoridor:
 
     #performs an action by specified agent.  absolute positions
     def performAction(self, agent, action):
-        prevState = copy.deepcopy(self)
         if action[0] == 'p':
             self.movePawn(agent, action[1])
         else:
             self.wallCounts[agent] -= 1
             self.placeWall(action[1], action[2])
-        return prevState
 
     def playerAction(self, agent, mousePosition):
         #determine location of mouse in board
