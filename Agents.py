@@ -61,17 +61,23 @@ class Action:
     def getNewY(self):
         return self.newY
     
-    def applyDirection(self):
-        self.newX = self.X
-        self.newY = self.Y
+    def applyDirection(self, position):
+        self.X = position[0]
+        self.Y = position[1]
+        self.newX = position[0]
+        self.newY = position[1]
         
         if self.direction == Action.UP:
+            self.Y += 1
             self.newY += 1
         elif self.direction == Action.DOWN:
+            self.Y -= 1
             self.newY -= 1
         elif self.direction == Action.RIGHT:
+            self.X += 1
             self.newX += 1
         elif self.direction == Action.LEFT:
+            self.X -= 1
             self.newX -= 1
     
     def xstr(self,s):
@@ -178,7 +184,7 @@ class Agent:
 
     
     def move(self, agentType, sess):
-        #print("Agent: ", agentType)
+        print("Agent: ", agentType)
         
 
 
@@ -204,11 +210,14 @@ class Agent:
         actionIndex = indices[0]
         action = self.allActions[actionIndex]
         
+        print("chosen action: ", action)
+        
         if(action.getType() == Action.PAWN):
-            action.applyDirection()
+            action.applyDirection(self.state.getPosition())
             self.state.updatePosition(action.getNewX(), action.getNewY())
         
-        print("chosen action: ", action)
+        
+        print("returning..", action)
         return action
         
     
@@ -240,7 +249,7 @@ class TopAgent(Agent):
             XRelativeToGame = self.game.getGridSize() - action.getX() - 1
         else:
             XRelativeToGame = self.game.getGridSize() - action.getX() - 2
-        gameAction = Action(action.getType(), action.getDirection(), action.getOrientation(), XRelativeToGame, action.getY())
+        gameAction = Action(action.getType(), action.getDirection(), action.getOrientation(), XRelativeToGame, action.getY(), XRelativeToGame, action.getY())
         
         print("gameAction: ", gameAction)
         return gameAction
@@ -267,7 +276,7 @@ class BottomAgent(Agent):
             YRelativeToGame = self.game.getGridSize() - action.getY() - 1
         else:
             YRelativeToGame = self.game.getGridSize() - action.getY() - 2
-        gameAction = Action(action.getType(), action.getDirection(), action.getOrientation(), action.getX(), YRelativeToGame)
+        gameAction = Action(action.getType(), action.getDirection(), action.getOrientation(), action.getX(), YRelativeToGame, action.getX(), YRelativeToGame)
         
         print("gameAction: ", gameAction)
         return gameAction
