@@ -163,12 +163,14 @@ class Qoridor:
 
     #performs an action by specified agent.  absolute positions
     def performAction(self, agent, action):
-        
+        print("agent: ", agent)
+        print("action: ", action)
+        '''
         if action == 'p':
-            action = Action(Action.PAWN, action[1][0], action[1][2])
+            action = Action(Action.PAWN, None, action[1][0], action[1][2])
         elif action == 'w':
-            action = Action(Action.WALL, action[1][0], action[1][2])
-        
+            action = Action(Action.WALL, None, action[1][0], action[1][2])
+        '''
 
         if action.getType() == Action.PAWN:
             print("moving")
@@ -176,7 +178,12 @@ class Qoridor:
         else:
             self.wallCounts[agent] -= 1
             print("placing a wall")
-            self.placeWall((action.getX(), action.getY()), action.getOrientation())
+            if action.getOrientation() == Action.VERTICAL:
+                orientation = 1
+            elif action.getOrientation() == Action.HORIZONTAL:
+                orientation = 2
+                
+            self.placeWall((action.getX(), action.getY()), orientation)
 
     def playerAction(self, agent, mousePosition):
         #determine location of mouse in board
@@ -190,13 +197,21 @@ class Qoridor:
     def getMoveFromMousePos(self, agent, mousePosition):
         color = self.screen.get_at(mousePosition)
         if color != self.wallColor and color != self.squareColor :
-            xCoord = mousePosition[0] * 9 / self.screen.get_width()
-            yCoord = mousePosition[1]*9 / self.screen.get_height()
+            xCoord = round(mousePosition[0] * 9 / self.screen.get_width())
+            yCoord = round(mousePosition[1]*9 / self.screen.get_height())
+            if xCoord < 0:
+                xCoord = 0
+            if yCoord < 0:
+                yCoord = 0
+            if xCoord > 8:
+                xCoord = 8
+            if yCoord > 8:
+                yCoord = 8
             return ('p', (xCoord, yCoord))
         else:
             boxSize = self.screen.get_width() / 9;
-            xCoord = (mousePosition[0] - boxSize / 2) * 9 / self.screen.get_width()
-            yCoord = (mousePosition[1] - boxSize / 2) * 9 / self.screen.get_height()
+            xCoord = round((mousePosition[0] - boxSize / 2) * 9 / self.screen.get_width())
+            yCoord = round((mousePosition[1] - boxSize / 2) * 9 / self.screen.get_height())
             if xCoord < 0:
                 xCoord = 0
             if yCoord < 0:

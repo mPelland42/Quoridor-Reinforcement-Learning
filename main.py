@@ -92,7 +92,7 @@ with tf.Session() as sess:
             game.performAction(currentAgent, action)
             print ("============")
         
-            time.sleep(500) # so we can see wtf is going on
+            
             
             
             #if random.random() < .5:
@@ -109,15 +109,16 @@ with tf.Session() as sess:
             else:
                 currentAgent = (currentAgent + 1) % 2
             
-            #screen.fill(0)
-            #game.draw(currentAgent, pygame.mouse.get_pos())
-            #drawn = True
+            screen.fill(0)
+            game.draw(currentAgent, pygame.mouse.get_pos())
+            drawn = True
 
-
-        #if game.maybeMoveChanged(currentAgent, pygame.mouse.get_pos()):
-        #    screen.fill(0)
-        #    game.draw(currentAgent, pygame.mouse.get_pos())
-        #    drawn = True
+            time.sleep(1) # so we can see wtf is going on
+            
+        if game.maybeMoveChanged(currentAgent, pygame.mouse.get_pos()):
+            screen.fill(0)
+            game.draw(currentAgent, pygame.mouse.get_pos())
+            drawn = True
 
         
         
@@ -134,9 +135,9 @@ with tf.Session() as sess:
                         game = Qoridor(screen)
                     else:
                         currentAgent = (currentAgent+1)%2
-                    #screen.fill(0)
-                    #game.draw(currentAgent, pygame.mouse.get_pos())
-                    #drawn = True
+                    screen.fill(0)
+                    game.draw(currentAgent, pygame.mouse.get_pos())
+                    drawn = True
 
         if drawn:
             pygame.display.flip()
