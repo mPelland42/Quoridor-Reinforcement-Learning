@@ -2,6 +2,7 @@ import pygame
 from AStar import AStar
 
 import copy
+from Agents import Action
 
 class Qoridor:
     def __init__(self, screen):
@@ -17,10 +18,14 @@ class Qoridor:
         self.wallCounts = [10, 10]
         self.turn = 1
         self.screen = screen
-
         self.squareColor = (0, 255, 0)
         self.wallColor = (101, 67, 33)
         self.lastMaybeMove = ('p', -1, -1)
+
+
+
+    def getGridSize(self):
+        return 9
 
     #returns winner if game is over, else returns -1
     def endGame(self):
@@ -55,7 +60,7 @@ class Qoridor:
             for j in range(9):
                 pygame.draw.rect(self.screen, self.squareColor, [i*boxSize + shift, j*boxSize + shift, boxSize, boxSize], 10)
         for i in range(len(self.agents)):
-            pygame.draw.circle(self.screen, self.agentColors[i], (self.agents[i][0] * boxSize + boxSize/2 + shift, self.agents[i][1] * boxSize + boxSize/2 + shift), int(boxSize * .25))
+            pygame.draw.circle(self.screen, self.agentColors[i], (int(self.agents[i][0] * boxSize + boxSize/2 + shift), int(self.agents[i][1] * boxSize + boxSize/2 + shift)), int(boxSize * .25))
         for i in self.walls:
             #if __name__ == '__main__':
                 if i[1] == 2:
@@ -103,7 +108,7 @@ class Qoridor:
     #gets all possible pawn moves as absolute positions
     def getPawnMoves(self, space):
         #print "getting pawn moves ", space
-        neighbors = []
+        neighbors = [space]
         for neighbor in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
             target = self.tupAdd(space, neighbor)
             if self.getSpace(target) == -1:
@@ -158,11 +163,14 @@ class Qoridor:
 
     #performs an action by specified agent.  absolute positions
     def performAction(self, agent, action):
-        if action[0] == 'p':
-            self.movePawn(agent, action[1])
+        action = Action(if action == 'p' Action.PAWN else Action.WALL, action[1][0], action[1][2])
+
+
+        if action.getType() == Action.PAWN:
+            self.movePawn(agent, (action.getX(), action.getY()))
         else:
             self.wallCounts[agent] -= 1
-            self.placeWall(action[1], action[2])
+            self.placeWall(action.getX(), action.getY())
 
     def playerAction(self, agent, mousePosition):
         #determine location of mouse in board
