@@ -29,7 +29,10 @@ class AgentState:
         
     def updatePosition(self, X, Y):
         self.position = (X, Y)
-        
+    
+    def getPosition(self):
+        return self.position
+    
     def updateEnemyPosition(self, X, Y):
         self.enemyPosition = (X, Y)
         
