@@ -163,24 +163,24 @@ class Qoridor:
 
     #performs an action by specified agent.  absolute positions
     def performAction(self, agent, action):
+        
         if action == 'p':
-            type = Action.PAWN
-        else:
-            type = Action.WALL
-        action = Action(type, action[1][0], action[1][2])
-
+            action = Action(Action.PAWN, action[1][0], action[1][2])
+        elif action == 'w':
+            action = Action(Action.WALL, action[1][0], action[1][2])
+        
 
         if action.getType() == Action.PAWN:
-            self.movePawn(agent, (action.getX(), action.getY()))
+            print("moving")
+            self.movePawn(agent, (action.getNewX(), action.getNewY()))
         else:
             self.wallCounts[agent] -= 1
-            self.placeWall(action.getX(), action.getY())
+            print("placing a wall")
+            self.placeWall((action.getX(), action.getY()), action.getOrientation())
 
     def playerAction(self, agent, mousePosition):
         #determine location of mouse in board
         move = self.getMoveFromMousePos(agent, mousePosition)
-        print(move)
-        print(self.isLegalMove(agent, move))
         if self.isLegalMove(agent, move):
             self.performAction(agent, move)
             return True
@@ -262,9 +262,10 @@ class Qoridor:
 
     #returns whether a certain move is legal. Takes absolutes
     def isLegalMove(self, agent, move):
+        #print("move: ", move)
         if move[0] == 'p':
             legalMoves = self.getPawnMoves(self.agents[agent])
-            for i in self.getPawnMoves(self.agents[agent]):
+            for i in legalMoves:
                 if(i[0] == move[1][0] and i[1] == move[1][1]):
                     return True
             return False

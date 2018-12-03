@@ -4,6 +4,7 @@ import time
 from pygame.locals import *
 pygame.init()
 import sys
+
 from Game import Qoridor
 import cProfile
 
@@ -45,15 +46,17 @@ SCREEN_HEIGHT = 400
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA, 32)
 
 scores = [0, 0]
-
 game = Qoridor(screen)
 
+# right now, a wall is draw to the screen at the beginning.. not sure how to fix
 game.draw(0, (0, 0))
+
+
 pygame.display.flip()
 pygame.display.update()
 
-print(game.getPawnMoves(game.agents[0]))
 
+'''
 def getRandomAction(agent):
     wallMoves = [('w', (x, y), z) for x in range(7) for y in range(7) for z in [1, 2]]
     pawnMoves = [('p', x) for x in game.getPawnMoves(game.agents[agent])]
@@ -62,12 +65,14 @@ def getRandomAction(agent):
         move = random.choice(moves)
         if game.isLegalMove(agent, move):
             return move
+'''
 
-#print(game.getLegalMoves(0))
+
+
 print("Setting up agent networks...")
 topAgent = TopAgent(game)
 bottomAgent = BottomAgent(game)
-print("completed")
+print("completed\n")
 
 init = tf.global_variables_initializer()
 
@@ -75,17 +80,27 @@ with tf.Session() as sess:
     sess.run(init)
 
 
-    agents = [topAgent, bottomAgent]
+    super_agents = [topAgent, bottomAgent]
     currentAgent = 0
 
     while True:
         drawn = False
         if agents[currentAgent] == AI:
-            if random.random() < .5:
-                game.performAction(currentAgent, random.choice([('p', x) for x in game.getPawnMoves(game.agents[currentAgent])]))
-            else:
-                action = getRandomAction(currentAgent)
-                game.performAction(currentAgent, action)
+
+            agent = super_agents[currentAgent]
+            action = agent.move(sess)
+            game.performAction(currentAgent, action)
+            print ("============")
+
+            time.sleep(500) # so we can see wtf is going on
+
+
+            #if random.random() < .5:
+            #    game.performAction(currentAgent, random.choice([('p', x) for x in game.getPawnMoves(game.agents[currentAgent])]))
+            #else:
+            #    action = getRandomAction(currentAgent)
+            #    game.performAction(currentAgent, action)
+
             if game.endGame() != -1:
                 scores[currentAgent] += 1
                 print(scores)
@@ -104,7 +119,8 @@ with tf.Session() as sess:
             game.draw(currentAgent, pygame.mouse.get_pos())
             drawn = True
 
-        #time.sleep(1)
+
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
