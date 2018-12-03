@@ -54,8 +54,8 @@ class Qoridor:
 
         #needs to be edited to only display changes.
 
-        boxSize = self.screen.get_width()/9
-        shift = (self.screen.get_width() - boxSize*9)/2
+        boxSize = int(self.screen.get_width()/9)
+        shift = int((self.screen.get_width() - boxSize*9)/2)
         for i in range(9):
             for j in range(9):
                 pygame.draw.rect(self.screen, self.squareColor, [i*boxSize + shift, j*boxSize + shift, boxSize, boxSize], 10)
@@ -163,14 +163,12 @@ class Qoridor:
 
     #performs an action by specified agent.  absolute positions
     def performAction(self, agent, action):
-        print("agent: ", agent)
-        print("action: ", action)
-        '''
-        if action == 'p':
-            action = Action(Action.PAWN, None, action[1][0], action[1][2])
-        elif action == 'w':
-            action = Action(Action.WALL, None, action[1][0], action[1][2])
-        '''
+
+        #if action[0] == 'p':
+        #    action = Action(Action.PAWN, action[1][0], action[1][2])
+        #elif action[1] == 'w':
+        #   action = Action(Action.WALL, action[1][0], action[1][2])
+
 
         if action.getType() == Action.PAWN:
             print("moving")
