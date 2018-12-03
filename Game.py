@@ -163,7 +163,11 @@ class Qoridor:
 
     #performs an action by specified agent.  absolute positions
     def performAction(self, agent, action):
-        action = Action(if action == 'p' Action.PAWN else Action.WALL, action[1][0], action[1][2])
+        if action == 'p':
+            type = Action.PAWN
+        else:
+            type = Action.WALL
+        action = Action(type, action[1][0], action[1][2])
 
 
         if action.getType() == Action.PAWN:
