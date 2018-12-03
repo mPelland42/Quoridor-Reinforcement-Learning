@@ -195,8 +195,8 @@ class Qoridor:
             return ('p', (xCoord, yCoord))
         else:
             boxSize = self.screen.get_width() / 9;
-            xCoord = (mousePosition[0] - boxSize / 2) * 9 / self.screen.get_width()
-            yCoord = (mousePosition[1] - boxSize / 2) * 9 / self.screen.get_height()
+            xCoord = int((mousePosition[0] - boxSize / 2) * 9 / self.screen.get_width())
+            yCoord = int((mousePosition[1] - boxSize / 2) * 9 / self.screen.get_height())
             if xCoord < 0:
                 xCoord = 0
             if yCoord < 0:

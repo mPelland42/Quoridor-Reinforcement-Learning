@@ -52,6 +52,8 @@ game.draw(0, (0, 0))
 pygame.display.flip()
 pygame.display.update()
 
+print(game.getPawnMoves(game.agents[0]))
+
 def getRandomAction(agent):
     wallMoves = [('w', (x, y), z) for x in range(7) for y in range(7) for z in [1, 2]]
     pawnMoves = [('p', x) for x in game.getPawnMoves(game.agents[agent])]
@@ -91,15 +93,16 @@ with tf.Session() as sess:
                 game = Qoridor(screen)
             else:
                 currentAgent = (currentAgent + 1) % 2
-            #screen.fill(0)
-            #game.draw(currentAgent, pygame.mouse.get_pos())
-            #drawn = True
+            screen.fill(0)
+            game.draw(currentAgent, pygame.mouse.get_pos())
+            drawn = True
 
 
-        #if game.maybeMoveChanged(currentAgent, pygame.mouse.get_pos()):
-        #    screen.fill(0)
-        #    game.draw(currentAgent, pygame.mouse.get_pos())
-        #    drawn = True
+        if game.maybeMoveChanged(currentAgent, pygame.mouse.get_pos()):
+            screen.fill(0)
+            print(pygame.mouse.get_pos())
+            game.draw(currentAgent, pygame.mouse.get_pos())
+            drawn = True
 
         #time.sleep(1)
         for event in pygame.event.get():
@@ -115,9 +118,9 @@ with tf.Session() as sess:
                         game = Qoridor(screen)
                     else:
                         currentAgent = (currentAgent+1)%2
-                    #screen.fill(0)
-                    #game.draw(currentAgent, pygame.mouse.get_pos())
-                    #drawn = True
+                    screen.fill(0)
+                    game.draw(currentAgent, pygame.mouse.get_pos())
+                    drawn = True
 
         if drawn:
             pygame.display.flip()
