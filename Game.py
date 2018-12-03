@@ -117,8 +117,10 @@ class Qoridor:
 
     #performs an action by specified agent
     def performAction(self, agent, action):
+        
+        
         if action.getType() == Action.PAWN:
-            self.movePawn(agent, (action.getX(), action.getY()))
+            self.movePawn(agent, (action.getNewX(), action.getNewY()))
         else:
             self.wallCounts[agent] -= 1
             self.placeWall(action.getX(), action.getY())
@@ -157,6 +159,7 @@ class Qoridor:
 
     #returns whether a certain move is legal
     def isLegalMove(self, agent, move):
+        print("move: ", move)
         if move[0] == 'p':
             return self.canMoveTo(self.agents[agent], (move[0], move[1]))
         else:

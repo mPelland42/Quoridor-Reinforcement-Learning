@@ -4,6 +4,7 @@ import time
 from pygame.locals import *
 pygame.init()
 import sys
+
 from Game import Qoridor
 
 from Agents import TopAgent
