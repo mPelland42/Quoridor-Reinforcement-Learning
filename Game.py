@@ -75,8 +75,7 @@ class Qoridor:
             if maybeMove[0] == 'p':
                 pass
                 pygame.draw.circle(s, self.agentColors[currAgent] + (128,), (
-                maybeMove[1][0] * boxSize + boxSize / 2 + shift, maybeMove[1][1] * boxSize + boxSize / 2 + shift),
-                                   int(boxSize * .25))
+                int(maybeMove[1][0] * boxSize + boxSize / 2 + shift), int(maybeMove[1][1] * boxSize + boxSize / 2 + shift)), int(boxSize * .25))
             else:
                 if maybeMove[2] == 2:
                     pygame.draw.rect(s, self.wallColor + (255,),
