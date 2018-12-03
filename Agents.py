@@ -73,11 +73,16 @@ class Action:
             self.newX += 1
         elif self.direction == Action.LEFT:
             self.newX -= 1
-                
+    
+    def xstr(self,s):
+        if s is None:
+            return 'NULL'
+        return str(s)
+
     def __str__(self):
-        return "Action: " + self.actionType + " direction: " + self.direction + \
-    "  X,Y:(" + str(self.X) + "," + str(self.Y) + ")" + "  New X,Y:(" + str(self.newX) + \
-    "," + str(self.newY) + ")"
+        return "Action: " + self.xstr(self.actionType) + " Direction: " + self.xstr(self.direction) + \
+    " Orientation: " + self.xstr(self.orientation) + "  X,Y:(" + self.xstr(self.X) + "," + self.xstr(self.Y) + \
+    ")" + "  New X,Y:(" + self.xstr(self.newX) + "," + self.xstr(self.newY) + ")"
         
         
             
@@ -102,7 +107,8 @@ class Agent:
         
         for x in range(gridSize - 1):
             for y in range(gridSize - 1):
-                self.allActions.append(Action(Action.WALL, None, X = x, Y = y))
+                self.allActions.append(Action(Action.WALL, None, Action.HORIZONTAL, x, y))
+                self.allActions.append(Action(Action.WALL, None, Action.VERTICAL, x, y))
 
         
         self.actionSize = len(self.allActions)
@@ -118,18 +124,19 @@ class Agent:
         realNetworkName = networkName + "_Q_primary"
         self.q = self.network.nn(self.states, [32, 32, self.actionSize], scope_name=realNetworkName)
         self.softmax = tf.nn.softmax(self.q)
-        print(self.softmax)
+        #print(self.softmax)
         #self.q_target = self.network.nn(self.states_next, [32, 32, self.actionSize], scope_name='Bot_Q_target')
         
         
         
     def invalidMove(self, index, state, agentType):
         action = self.allActions[index]
-        print(action)
+        #print(action)
 
         orientation = 0
         
         if action.getType() == Action.PAWN:
+            offset = -1
             X, Y = self.state.getPosition()
             moveType = 'p'
             if action.getDirection() == Action.UP:
@@ -141,6 +148,7 @@ class Agent:
             elif action.getDirection() == Action.LEFT:
                 X -= 1
         else:
+            offset = -2
             X = action.getX()
             Y = action.getY()
             moveType = 'w'
@@ -152,21 +160,16 @@ class Agent:
         
         if agentType == "bot":
             agentNumber = 1
-            YRelativeToGame = self.game.getGridSize() - Y - 1
+            YRelativeToGame = self.game.getGridSize() - Y + offset
             XRelativeToGame = X
         else:
             agentNumber = 0
-            XRelativeToGame = self.game.getGridSize() - X - 1
+            XRelativeToGame = self.game.getGridSize() - X + offset
             YRelativeToGame = Y
             
             
         move = (moveType, (XRelativeToGame, YRelativeToGame), orientation)
-        if self.game.isLegalMove(agentNumber, move) == True:
-            print("INVALID\n")
-        else:
-            print("OK\n")
-            
-        return self.game.isLegalMove(agentNumber, move)
+        return not self.game.isLegalMove(agentNumber, move)
 
 
 
@@ -175,7 +178,7 @@ class Agent:
 
     
     def move(self, agentType, sess):
-        print("Agent: ", agentType)
+        #print("Agent: ", agentType)
         
 
 
@@ -205,6 +208,7 @@ class Agent:
             action.applyDirection()
             self.state.updatePosition(action.getNewX(), action.getNewY())
         
+        print("chosen action: ", action)
         return action
         
     
@@ -232,8 +236,13 @@ class TopAgent(Agent):
         action = Agent.move(self, "top", sess)
         
         # convert this "BottomAgent perspective "move to "game perspective" move
-        XRelativeToGame = self.game.getGridSize() - action.getX() - 1
+        if action.getType() == Action.PAWN:
+            XRelativeToGame = self.game.getGridSize() - action.getX() - 1
+        else:
+            XRelativeToGame = self.game.getGridSize() - action.getX() - 2
         gameAction = Action(action.getType(), action.getDirection(), action.getOrientation(), XRelativeToGame, action.getY())
+        
+        print("gameAction: ", gameAction)
         return gameAction
         
         
@@ -254,8 +263,13 @@ class BottomAgent(Agent):
         action = Agent.move(self, "bot", sess)
         
         # convert this "BottomAgent perspective "move to "game perspective" move
-        YRelativeToGame = self.game.getGridSize() - action.getY() - 1
+        if action.getType() == Action.PAWN:
+            YRelativeToGame = self.game.getGridSize() - action.getY() - 1
+        else:
+            YRelativeToGame = self.game.getGridSize() - action.getY() - 2
         gameAction = Action(action.getType(), action.getDirection(), action.getOrientation(), action.getX(), YRelativeToGame)
+        
+        print("gameAction: ", gameAction)
         return gameAction
     
     

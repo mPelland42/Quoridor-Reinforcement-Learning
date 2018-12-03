@@ -90,6 +90,7 @@ with tf.Session() as sess:
             agent = super_agents[currentAgent]
             action = agent.move(sess)
             game.performAction(currentAgent, action)
+            print ("============")
         
             time.sleep(500) # so we can see wtf is going on
             
