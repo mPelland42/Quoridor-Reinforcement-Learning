@@ -194,8 +194,8 @@ class Qoridor:
     def getMoveFromMousePos(self, agent, mousePosition):
         color = self.screen.get_at(mousePosition)
         if color != self.wallColor and color != self.squareColor :
-            xCoord = round(mousePosition[0] * 9 / self.screen.get_width())
-            yCoord = round(mousePosition[1]*9 / self.screen.get_height())
+            xCoord = int(mousePosition[0] * 9 / self.screen.get_width())
+            yCoord = int(mousePosition[1]*9 / self.screen.get_height())
             if xCoord < 0:
                 xCoord = 0
             if yCoord < 0:
