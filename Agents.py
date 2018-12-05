@@ -7,11 +7,14 @@ Created on Sat Dec  1 15:54:50 2018
 
 #from Game import Qoridor
 
-from AgentState import AgentState
+from GameState import GameState
+from GameState import BoardElement
 from DeepNetwork import DeepNetwork
+from Point import Point
 import numpy as np
 
 import tensorflow as tf
+import copy
 
 
 
@@ -27,58 +30,58 @@ class Action:
     RIGHT = "RIGHT"
     STAY = "STAY"
     
-    VERTICAL = "VERTICAL"
-    HORIZONTAL = "HORIZONTAL"
     
     
-    def __init__(self, actionType, direction = None, orientation = None, X = None, Y = None, newX = None, newY = None):
+    def __init__(self, actionType, direction = None, orientation = None, position = None):
             self.actionType = actionType
             self.direction = direction
             self.orientation = orientation
-            self.X = X
-            self.Y = Y
-            self.newX = newX
-            self.newY = newY
+            self.position = position
             
+            
+    def makeAllActions(gridSize):
+        
+        # define all possible actions
+        allActions = []
+        allActions.append(Action(Action.PAWN, Action.UP))
+        allActions.append(Action(Action.PAWN, Action.DOWN))
+        allActions.append(Action(Action.PAWN, Action.LEFT))
+        allActions.append(Action(Action.PAWN, Action.RIGHT))
+        allActions.append(Action(Action.PAWN, Action.STAY))
+        
+        for x in range(gridSize - 1):
+            for y in range(gridSize - 1):
+                allActions.append(Action(Action.WALL, None, BoardElement.WALL_HORIZONTAL, Point(x, y)))
+                allActions.append(Action(Action.WALL, None, BoardElement.WALL_VERTICAL, Point(x, y)))
+        return allActions
+        
+        
+        
     def getType(self):
-        return self.actionType
+        return copy.copy(self.actionType)
     
     def getDirection(self):
-        return self.direction
+        return copy.copy(self.direction)
     
     def getOrientation(self):
-        return self.orientation
+        return copy.copy(self.orientation)
     
-    def getX(self):
-        return self.X
+    def getPosition(self):
+        return copy.copy(self.position)
     
-    def getY(self):
-        return self.Y
-    
-    def getNewX(self):
-        return self.newX
-    
-    def getNewY(self):
-        return self.newY
-    
-    def applyDirection(self, position):
-        self.X = position[0]
-        self.Y = position[1]
-        self.newX = position[0]
-        self.newY = position[1]
+    def updatePosition(self, position):
+        self.position = position
+        
+    def applyDirection(self):
         
         if self.direction == Action.UP:
-            self.Y += 1
-            self.newY += 1
+            self.position.addToY(1)
         elif self.direction == Action.DOWN:
-            self.Y -= 1
-            self.newY -= 1
+            self.position.addToY(-1)
         elif self.direction == Action.RIGHT:
-            self.X += 1
-            self.newX += 1
+            self.position.addToX(1)
         elif self.direction == Action.LEFT:
-            self.X -= 1
-            self.newX -= 1
+            self.position.addToX(-1)
     
     def xstr(self,s):
         if s is None:
@@ -87,37 +90,27 @@ class Action:
 
     def __str__(self):
         return "Action: " + self.xstr(self.actionType) + " Direction: " + self.xstr(self.direction) + \
-    " Orientation: " + self.xstr(self.orientation) + "  X,Y:(" + self.xstr(self.X) + "," + self.xstr(self.Y) + \
-    ")" + "  New X,Y:(" + self.xstr(self.newX) + "," + self.xstr(self.newY) + ")"
+    " Orientation: " + self.xstr(self.orientation) + "  X,Y:" + str(self.position)
+    
         
         
             
 # self.game should be automatically updated when changes outside of this scope,
 # (passed as a deep copy)
 class Agent:
-    def __init__(self, game, networkName):
+    def __init__(self, game, agentType):
         self.game = game
         gridSize = game.getGridSize()
-        self.state = AgentState(gridSize)
-        self.batchSize = 1
-        self.observationSize = len(self.state.asVector())
+        
+        self.batchSize = 1                 # both bot and top have the same vector size
+        self.observationSize = len(game.getState().asVector(BoardElement.AGENT_TOP))
         
         
-        # define all possible actions
-        self.allActions = []
-        self.allActions.append(Action(Action.PAWN, Action.UP))
-        self.allActions.append(Action(Action.PAWN, Action.DOWN))
-        self.allActions.append(Action(Action.PAWN, Action.LEFT))
-        self.allActions.append(Action(Action.PAWN, Action.RIGHT))
-        self.allActions.append(Action(Action.PAWN, Action.STAY))
-        
-        for x in range(gridSize - 1):
-            for y in range(gridSize - 1):
-                self.allActions.append(Action(Action.WALL, None, Action.HORIZONTAL, x, y))
-                self.allActions.append(Action(Action.WALL, None, Action.VERTICAL, x, y))
-
-        
+        self.allActions = Action.makeAllActions(gridSize)
         self.actionSize = len(self.allActions)
+        
+        
+        
         
         self.states = tf.placeholder(tf.float32, shape=(self.batchSize, self.observationSize), name='state')
         self.states_next = tf.placeholder(tf.float32, shape=(self.batchSize, self.observationSize), name='state_next')
@@ -127,171 +120,143 @@ class Agent:
 
         self.network = DeepNetwork()
         
-        realNetworkName = networkName + "_Q_primary"
-        self.q = self.network.nn(self.states, [32, 32, self.actionSize], scope_name=realNetworkName)
+        if agentType == BoardElement.AGENT_TOP:
+            networkName = "TOP_Q_primary"
+        elif agentType == BoardElement.AGENT_BOT:
+            networkName = "BOT_Q_primary"
+            
+        self.q = self.network.nn(self.states, [32, 32, self.actionSize], scope_name = networkName)
         self.softmax = tf.nn.softmax(self.q)
         #print(self.softmax)
         #self.q_target = self.network.nn(self.states_next, [32, 32, self.actionSize], scope_name='Bot_Q_target')
         
         
         
-    def invalidMove(self, index, state, agentType):
+    def invalidMove(self, index, agentType, gameState):
         action = self.allActions[index]
-        #print(action)
-
+        action = self.makeActionReadyForGame(agentType, action, gameState)
+        
         orientation = 0
         
         if action.getType() == Action.PAWN:
-            offset = -1
-            X, Y = self.state.getPosition()
             moveType = 'p'
-            if action.getDirection() == Action.UP:
-                Y += 1
-            elif action.getDirection() == Action.DOWN:
-                Y -= 1
-            elif action.getDirection() == Action.RIGHT:
-                X += 1
-            elif action.getDirection() == Action.LEFT:
-                X -= 1
-        else:
-            offset = -2
-            X = action.getX()
-            Y = action.getY()
+            
+        elif action.getType() == Action.WALL:
             moveType = 'w'
-            if action.getOrientation() == Action.HORIZONTAL:
-                orientation = 2
-            else:
+            if action.getOrientation() == BoardElement.WALL_VERTICAL:
                 orientation = 1
-        
-        
-        if agentType == "bot":
-            agentNumber = 1
-            YRelativeToGame = self.game.getGridSize() - Y + offset
-            XRelativeToGame = X
-        else:
+            elif action.getOrientation() == BoardElement.WALL_HORIZONTAL:
+                orientation = 2
+                
+        if agentType == BoardElement.AGENT_TOP:
             agentNumber = 0
-            XRelativeToGame = self.game.getGridSize() - X + offset
-            YRelativeToGame = Y
+        elif agentType == BoardElement.AGENT_BOT:
+            agentNumber = 1
             
-            
-        move = (moveType, (XRelativeToGame, YRelativeToGame), orientation)
+        move = (moveType, (action.getPosition().X, action.getPosition().Y), orientation)
         return not self.game.isLegalMove(agentNumber, move)
 
 
 
-
-
-
     
-    def move(self, agentType, sess):
+    def move(self, agentType, currentStateVector, sess):
         print("Agent: ", agentType)
         
-
-
+        
+        
         # use leared policy here to decide move..
         q = sess.run(self.softmax, feed_dict=
-                     {self.states: np.asarray(self.state.asVector(), dtype=float).reshape(1,self.observationSize)})
+                     {self.states: np.asarray(currentStateVector, dtype=float).reshape(1,self.observationSize)})
         q = q.flatten()
         """ q:         0.23           0.1            0.6            0.07     """
         
         
+        values, indices = sess.run(tf.nn.top_k(q, len(q)-1))
+        
+        
         # now, filter out invalid moves
-        #print("q: ", q)
-        print("Agent is at: ", self.state.getPosition())
-        for i in range(len(q)):
-            if self.invalidMove(i, self.state, agentType):
-                q[i] = 0
+        i = 0
+        while self.invalidMove(indices[i], agentType, self.game.getState()):
+            q[indices[i]] = 0
+            i += 1
+            
         
-        
-        
-        values, indices = sess.run(tf.nn.top_k(q, 1))
-        #print("values: ", values)
-        #print("indices: ", indices)
-        actionIndex = indices[0]
+        actionIndex = indices[i]
         action = self.allActions[actionIndex]
         
-        print("chosen action: ", action)
-        
-        if(action.getType() == Action.PAWN):
-            action.applyDirection(self.state.getPosition())
-            self.state.updatePosition(action.getNewX(), action.getNewY())
-        
-        
-        print("returning..", action)
         return action
         
     
-    
-        
-    def updateFromEnemyMove(self, move, X, Y):
-        if move.getType() == Action.WALL:
-            self.state.addWall(X, Y)
-        elif move.getType() == Action.PAWN:
-            self.state.updateEnemyPosition(X, Y)
-        else:
-            raise ValueError("Invalid action")
-            
 
+    def makeActionReadyForGame(self, agentType, action, gameState):
         
+        position = action.getPosition()
+        
+        if agentType == BoardElement.AGENT_TOP:
+            if action.getType() == Action.PAWN:
+                position = gameState.getPosition(BoardElement.AGENT_TOP)
+                
+                # reversed horizontally, since this is the top agent's perspective
+                if action.getDirection() == Action.LEFT:
+                    position.addToX(1)
+                elif action.getDirection() == Action.RIGHT:
+                    position.addToX(-1)
+                elif action.getDirection() == Action.UP:
+                    position.addToY(1)
+                elif action.getDirection() == Action.DOWN:
+                    position.addToY(-1)
+            else:
+                position = Point(self.game.getGridSize() - position.X - 2, position.Y)
+
+            
+        elif agentType == BoardElement.AGENT_BOT:
+            if action.getType() == Action.PAWN:
+                position = gameState.getPosition(BoardElement.AGENT_BOT)
+                
+                # reversed horizontally, since this is the top agent's perspective
+                if action.getDirection() == Action.LEFT:
+                    position.addToX(-1)
+                elif action.getDirection() == Action.RIGHT:
+                    position.addToX(1)
+                elif action.getDirection() == Action.UP:
+                    position.addToY(-1)
+                elif action.getDirection() == Action.DOWN:
+                    position.addToY(1)
+            else:
+                position = Point(position.X, self.game.getGridSize() - position.Y - 2)
+                
+                
+        action.updatePosition(position)
+        return action
+
+
         
         
 class TopAgent(Agent):
     def __init__(self, game):
-        Agent.__init__(self, game, "top")
+        Agent.__init__(self, game, BoardElement.AGENT_TOP)
 
 
 
     def move(self, sess):
-        action = Agent.move(self, "top", sess)
+        action = Agent.move(self, BoardElement.AGENT_TOP, self.game.getState().asVector(BoardElement.AGENT_TOP), sess)
         
-        # convert this "BottomAgent perspective "move to "game perspective" move
-        if action.getType() == Action.PAWN:
-            XRelativeToGame = self.game.getGridSize() - action.getX() - 1
-        else:
-            XRelativeToGame = self.game.getGridSize() - action.getX() - 2
-        gameAction = Action(action.getType(), action.getDirection(), action.getOrientation(), XRelativeToGame, action.getY(), XRelativeToGame, action.getY())
-        
-        print("gameAction: ", gameAction)
-        return gameAction
-        
-        
-    def updateFromEnemyMove(self, move):
-        XRelativeToMe = self.game.getGridSize() - move.getX() - 1
-        Agent.updateFromEnemyMove(self, move, XRelativeToMe, move.getY())
-        
-        
-        
+        print("game ", action)
+        return action
 
-        
-        
+
+
 class BottomAgent(Agent):
     def __init__(self, game):
-        Agent.__init__(self, game, "bot")
+        Agent.__init__(self, game, BoardElement.AGENT_BOT)
 
     def move(self, sess):
-        action = Agent.move(self, "bot", sess)
+        action = Agent.move(self, BoardElement.AGENT_BOT, self.game.getState().asVector(BoardElement.AGENT_BOT), sess)
         
-        # convert this "BottomAgent perspective "move to "game perspective" move
-        if action.getType() == Action.PAWN:
-            YRelativeToGame = self.game.getGridSize() - action.getY() - 1
-        else:
-            YRelativeToGame = self.game.getGridSize() - action.getY() - 2
-        gameAction = Action(action.getType(), action.getDirection(), action.getOrientation(), action.getX(), YRelativeToGame, action.getX(), YRelativeToGame)
-        
-        print("gameAction: ", gameAction)
-        return gameAction
+        print("game ", action)
+        return action
     
     
-    
-    
-        
-    def updateFromEnemyMove(self, move):
-        YRelativeToMe = self.game.getGridSize() - move.getY() - 1
-        Agent.updateFromEnemyMove(self, move, move.getX(), YRelativeToMe)
-
-        
-        
-        
         
         
         

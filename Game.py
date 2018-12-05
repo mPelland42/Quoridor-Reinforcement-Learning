@@ -3,9 +3,11 @@ from AStar import AStar
 
 import copy
 from Agents import Action
+from GameState import GameState
+from GameState import BoardElement
 
 class Qoridor:
-    def __init__(self, screen):
+    def __init__(self, screen, gridSize):
         self.spaces = [[-1 for x in range(9)] for x in range(9)]
         self.intersections = [[0 for x in range(8)] for x in range(8)]
         self.agents = [(4, 0), (4, 8)]
@@ -21,11 +23,17 @@ class Qoridor:
         self.squareColor = (0, 255, 0)
         self.wallColor = (101, 67, 33)
         self.lastMaybeMove = ('p', -1, -1)
+        
+        self.gridSize = gridSize
+        self.state = GameState(gridSize)
 
 
 
+    def getState(self):
+        return self.state
+    
     def getGridSize(self):
-        return 9
+        return self.gridSize
 
     #returns winner if game is over, else returns -1
     def endGame(self):
@@ -106,6 +114,7 @@ class Qoridor:
 
     #gets all possible pawn moves as absolute positions
     def getPawnMoves(self, space):
+        
         #print "getting pawn moves ", space
         neighbors = [space]
         for neighbor in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
@@ -113,6 +122,7 @@ class Qoridor:
             if self.getSpace(target) == -1:
                 if self.canMoveTo(space, target):
                     neighbors.append(target)
+                    
             #if no direct move available, see if we can jump the pawn directly
             elif self.getSpace(self.tupAdd(space, [2*x for x in neighbor])) == -1 and self.canMoveTo(target, self.tupAdd(space, [2*x for x in neighbor])):
                 neighbors.append(self.tupAdd(space, tuple(2*x for x in neighbor)))
@@ -148,6 +158,9 @@ class Qoridor:
 
     #determines if there is a wall in between two square locations
     def canMoveTo(self, start, end):
+        if end[0] >= self.getGridSize() or end[1] >= self.getGridSize():
+            return False            
+            
         if start[0] == end[0]:
             if(start[0] - 1 >= 0) and self.isWall(start[0] - 1, min(start[1], end[1])) == 2:
                 return False
@@ -171,16 +184,32 @@ class Qoridor:
 
         if action.getType() == Action.PAWN:
             print("moving")
-            self.movePawn(agent, (action.getNewX(), action.getNewY()))
+            self.movePawn(agent, (action.getPosition().X, action.getPosition().Y))
+            
+            if agent == 0: # top
+                self.state.updateAgentPosition(BoardElement.AGENT_TOP, action.getPosition())
+                
+            elif agent == 1: # bot
+                self.state.updateAgentPosition(BoardElement.AGENT_BOT, action.getPosition())
+                
         else:
             self.wallCounts[agent] -= 1
-            print("placing a wall")
-            if action.getOrientation() == Action.VERTICAL:
+            print("placing a wall at ", action.getPosition())
+            
+            if action.getOrientation() == BoardElement.WALL_VERTICAL:
                 orientation = 1
-            elif action.getOrientation() == Action.HORIZONTAL:
+                print("VERTICAL")
+            elif action.getOrientation() == BoardElement.WALL_HORIZONTAL:
                 orientation = 2
-
-            self.placeWall((action.getX(), action.getY()), orientation)
+                print("HORIZONTAL")
+                
+            self.placeWall((action.getPosition().X, action.getPosition().Y), orientation)
+            
+            self.state.addIntersection(action.getPosition(), action.getOrientation())
+            if agent == 0: # top
+                self.state.removeWallCount(BoardElement.AGENT_TOP)
+            elif agent == 1: # bot
+                self.state.removeWallCount(BoardElement.AGENT_BOT)
 
     def playerAction(self, agent, mousePosition):
         #determine location of mouse in board
@@ -233,6 +262,10 @@ class Qoridor:
 
     #moves a pawn from one square to the next
     def movePawn(self, agent, target):
+        print("movePawn()")
+        print(agent)
+        print(target)
+        print("\n")
         oldPos = self.agents[agent]
         self.spaces[oldPos[0]][oldPos[1]] = -1
         self.spaces[target[0]][target[1]] = agent
@@ -274,7 +307,7 @@ class Qoridor:
 
     #returns whether a certain move is legal. Takes absolutes
     def isLegalMove(self, agent, move):
-        #print("move: ", move)
+        #print("isLegalMove() move: ", move)
         if move[0] == 'p':
             legalMoves = self.getPawnMoves(self.agents[agent])
             for i in legalMoves:
@@ -284,6 +317,10 @@ class Qoridor:
         else:
             if(self.wallCounts[agent] == 0):
                 return False
+            #print("lol: ", self.intersections[move[1][0]][move[1][1]])
+            print("X: ", move[1][0])
+            print("Y: ", move[1][1])
+            print("intersection: ", self.intersections[move[1][0]][move[1][1]])
             if(self.intersections[move[1][0]][move[1][1]]) != 0:
                 return False
             self.placeWall(move[1], move[2])

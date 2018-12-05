@@ -35,6 +35,9 @@ AI = 0
 HUMAN = 1
 agents = [AI, AI]
 
+gridSize = 9
+gameSpeed = 0.1
+
 from Agents import TopAgent
 from Agents import BottomAgent
 
@@ -46,7 +49,7 @@ SCREEN_HEIGHT = 400
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA, 32)
 
 scores = [0, 0]
-game = Qoridor(screen)
+game = Qoridor(screen, gridSize)
 
 # right now, a wall is draw to the screen at the beginning.. not sure how to fix
 game.draw(0, (0, 0))
@@ -54,18 +57,6 @@ game.draw(0, (0, 0))
 
 pygame.display.flip()
 pygame.display.update()
-
-
-'''
-def getRandomAction(agent):
-    wallMoves = [('w', (x, y), z) for x in range(7) for y in range(7) for z in [1, 2]]
-    pawnMoves = [('p', x) for x in game.getPawnMoves(game.agents[agent])]
-    moves = pawnMoves + wallMoves
-    while 1:
-        move = random.choice(moves)
-        if game.isLegalMove(agent, move):
-            return move
-'''
 
 
 
@@ -86,20 +77,14 @@ with tf.Session() as sess:
     while True:
         drawn = False
         if agents[currentAgent] == AI:
-
+            print("sleeping for ", gameSpeed)
+            time.sleep(gameSpeed) # so we can see wtf is going on
+            
+            print ("\n============================================")
             agent = super_agents[currentAgent]
             action = agent.move(sess)
             game.performAction(currentAgent, action)
-            print ("============")
-
-
-
-
-            #if random.random() < .5:
-            #    game.performAction(currentAgent, random.choice([('p', x) for x in game.getPawnMoves(game.agents[currentAgent])]))
-            #else:
-            #    action = getRandomAction(currentAgent)
-            #    game.performAction(currentAgent, action)
+            
 
             if game.endGame() != -1:
                 scores[currentAgent] += 1
@@ -113,7 +98,7 @@ with tf.Session() as sess:
             game.draw(currentAgent, pygame.mouse.get_pos())
             drawn = True
 
-            time.sleep(1) # so we can see wtf is going on
+            
 
         if game.maybeMoveChanged(currentAgent, pygame.mouse.get_pos()):
             screen.fill(0)
