@@ -11,7 +11,7 @@ AgentState is the state of the game from this agent's perspective
 import math
 from Point import Point
 import copy
-
+import numpy as np
 
 class BoardElement():
     EMPTY = 0
@@ -30,13 +30,20 @@ class GameState:
         
         self.walls = {BoardElement.AGENT_TOP: 10, BoardElement.AGENT_BOT: 10}
         
+        self.winner = None
+        
         
     def updateAgentPosition(self, agentType, position):
         if agentType == BoardElement.AGENT_TOP:
             self.topAgentPosition = position
+            if position.Y == self.gridSize - 1:
+                self.winner = BoardElement.AGENT_TOP
+                
         elif agentType == BoardElement.AGENT_BOT:
             self.botAgentPosition = position
-    
+            if position.Y == 0:
+                self.winner = BoardElement.AGENT_BOT
+                
     def getPosition(self, agentType):
         if agentType == BoardElement.AGENT_TOP:
             return copy.copy(self.topAgentPosition)
@@ -49,6 +56,11 @@ class GameState:
     def removeWallCount(self, agentType):
         self.walls[agentType] -= 1
     
+    
+    def getWinner(self):
+        return self.winner
+        
+        
     # vector inputs into the neural net need to look identical
     # so top and bot have the same seperate but fair perspectives of the game
     def asVector(self, agentType):
@@ -90,16 +102,16 @@ class GameState:
             v.append(self.walls[BoardElement.AGENT_TOP])
             
             
-        return v
+        return np.array(v)
         
         
         
     def __str__(self):
         s = "intersections: " + " ".join(str(x) for x in self.intersections) +"\n"
         s += "TopAgentPosition: " + str(self.topAgentPosition) + "\n"
-        s += "BotAgentPosition: "+ str(self.butAgentPosition) + "\n"
-        s += "Top Agent's walls left: " + str(self.wall[BoardElement.AGENT_TOP]) + "\n"
-        s += "Bot agent's walls left: " + str(self.wall[BoardElement.AGENT_BOT]) + "\n"
+        s += "BotAgentPosition: "+ str(self.botAgentPosition) + "\n"
+        s += "Top Agent's walls left: " + str(self.walls[BoardElement.AGENT_TOP]) + "\n"
+        s += "Bot agent's walls left: " + str(self.walls[BoardElement.AGENT_BOT]) + "\n"
         return s
     
     

@@ -7,14 +7,17 @@ Created on Sat Dec  1 15:54:50 2018
 
 #from Game import Qoridor
 
-from GameState import GameState
 from GameState import BoardElement
-from DeepNetwork import DeepNetwork
 from Point import Point
 import numpy as np
 
 import tensorflow as tf
 import copy
+import random
+
+MEMORY = 50000
+NUM_EPISODES = 300
+
 
 
 
@@ -29,7 +32,6 @@ class Action:
     LEFT = "LEFT"
     RIGHT = "RIGHT"
     STAY = "STAY"
-    
     
     
     def __init__(self, actionType, direction = None, orientation = None, position = None):
@@ -54,7 +56,6 @@ class Action:
                 allActions.append(Action(Action.WALL, None, BoardElement.WALL_HORIZONTAL, Point(x, y)))
                 allActions.append(Action(Action.WALL, None, BoardElement.WALL_VERTICAL, Point(x, y)))
         return allActions
-        
         
         
     def getType(self):
@@ -98,40 +99,24 @@ class Action:
 # self.game should be automatically updated when changes outside of this scope,
 # (passed as a deep copy)
 class Agent:
-    def __init__(self, game, agentType):
+    def __init__(self, game, agentType, sess, model, memory):
         self.game = game
+        self.sess = sess
+        self.model = model
+        self.memory = memory
+        self.agentType = agentType
         gridSize = game.getGridSize()
-        
-        self.batchSize = 1                 # both bot and top have the same vector size
-        self.observationSize = len(game.getState().asVector(BoardElement.AGENT_TOP))
-        
         
         self.allActions = Action.makeAllActions(gridSize)
         self.actionSize = len(self.allActions)
         
-        
-        
-        
-        self.states = tf.placeholder(tf.float32, shape=(self.batchSize, self.observationSize), name='state')
-        self.states_next = tf.placeholder(tf.float32, shape=(self.batchSize, self.observationSize), name='state_next')
-        self.actions = tf.placeholder(tf.int32, shape=(self.batchSize,self.actionSize), name='action')
-        self.rewards = tf.placeholder(tf.float32, shape=(self.batchSize,), name='reward')
-        self.done_flags = tf.placeholder(tf.float32, shape=(self.batchSize,), name='done')
 
-        self.network = DeepNetwork()
+
+
         
-        if agentType == BoardElement.AGENT_TOP:
-            networkName = "TOP_Q_primary"
-        elif agentType == BoardElement.AGENT_BOT:
-            networkName = "BOT_Q_primary"
-            
-        self.q = self.network.nn(self.states, [32, 32, self.actionSize], scope_name = networkName)
-        self.softmax = tf.nn.softmax(self.q)
-        #print(self.softmax)
-        #self.q_target = self.network.nn(self.states_next, [32, 32, self.actionSize], scope_name='Bot_Q_target')
-        
-        
-        
+    def getType(self):
+        return self.agentType
+    
     def invalidMove(self, index, agentType, gameState):
         action = self.allActions[index]
         action = self.makeActionReadyForGame(agentType, action, gameState)
@@ -159,33 +144,34 @@ class Agent:
 
 
     
-    def move(self, agentType, currentStateVector, sess):
-        print("Agent: ", agentType)
+    def move(self, agentType, currentStateVector, epsilon):
+        #print("Agent: ", agentType)
         
         
-        
-        # use leared policy here to decide move..
-        q = sess.run(self.softmax, feed_dict=
-                     {self.states: np.asarray(currentStateVector, dtype=float).reshape(1,self.observationSize)})
-        q = q.flatten()
-        """ q:         0.23           0.1            0.6            0.07     """
+        # exclude illegal moves for now
+        # might need to implement a negative reward for them if performance sucks
         
         
-        values, indices = sess.run(tf.nn.top_k(q, len(q)-1))
+        if random.random() < epsilon:
+            while True:
+                randomAction = random.randint(0, self.model.getNumActions() - 1)
+                if not self.invalidMove(randomAction, agentType, self.game.getState()):
+                    break
+            return randomAction, self.allActions[randomAction]
         
-        
-        # now, filter out invalid moves
-        i = 0
-        while self.invalidMove(indices[i], agentType, self.game.getState()):
-            q[indices[i]] = 0
-            i += 1
+        else:
+            q = self.model.predictOne(currentStateVector, self.sess)
+            q = q.flatten()
+            values, indices = self.sess.run(tf.nn.top_k(q, len(q)-1))
+            i = 0
+            while self.invalidMove(indices[i], agentType, self.game.getState()):
+                i += 1
+            chosenAction = indices[i]
+            return chosenAction, self.allActions[chosenAction]
             
-        
-        actionIndex = indices[i]
-        action = self.allActions[actionIndex]
-        
-        return action
-        
+    
+    
+
     
 
     def makeActionReadyForGame(self, agentType, action, gameState):
@@ -229,32 +215,63 @@ class Agent:
         action.updatePosition(position)
         return action
 
-
+    def learn(self):
+        batch = self.memory.sample(self.model.getBatchSize())
+        
+        states = np.array([val[0] for val in batch])
+        next_states = np.array([(np.zeros(self.model.getNumStates()) 
+                                 if val[3] is None else val[3]) for val in batch])
+    
+        # predict Q(s,a) given the batch of states
+        q_s_a = self.model.predictBatch(states, self.sess)
+        
+        # predict Q(s',a') - so that we can do gamma * max(Q(s'a')) below
+        q_s_a_d = self.model.predictBatch(next_states, self.sess)
+        
+        # setup training arrays
+        x = np.zeros((len(batch), self.model.getNumStates()))
+        y = np.zeros((len(batch), self.model.getNumActions()))
+        for i, b in enumerate(batch):
+            state, action, reward, next_state = b[0], b[1], b[2], b[3]
+            
+            # get the current q values for all actions in state
+            current_q = q_s_a[i]
+            
+            # update the q value for action
+            if next_state is None:
+                # in this case, the game completed after action, so there is no max Q(s',a')
+                # prediction possible
+                current_q[action] = reward
+            else:
+                current_q[action] = reward + 0.9 * np.amax(q_s_a_d[i])
+            x[i] = state
+            y[i] = current_q
+        self.model.trainBatch(self.sess, x, y)
         
         
 class TopAgent(Agent):
-    def __init__(self, game):
-        Agent.__init__(self, game, BoardElement.AGENT_TOP)
+    def __init__(self, game, sess, model, memory):
+        Agent.__init__(self, game, BoardElement.AGENT_TOP, sess, model, memory)
 
 
 
-    def move(self, sess):
-        action = Agent.move(self, BoardElement.AGENT_TOP, self.game.getState().asVector(BoardElement.AGENT_TOP), sess)
+    def move(self, epsilon):
+        actionTuple = Agent.move(self, BoardElement.AGENT_TOP, self.game.getState().asVector(BoardElement.AGENT_TOP), epsilon)
         
-        print("game ", action)
-        return action
+        #print("game ", actionTuple[1])
+        return actionTuple
 
 
 
 class BottomAgent(Agent):
-    def __init__(self, game):
-        Agent.__init__(self, game, BoardElement.AGENT_BOT)
+    def __init__(self, game, sess, model, memory):
+        Agent.__init__(self, game, BoardElement.AGENT_BOT, sess, model, memory)
 
-    def move(self, sess):
-        action = Agent.move(self, BoardElement.AGENT_BOT, self.game.getState().asVector(BoardElement.AGENT_BOT), sess)
+    def move(self, epsilon):
+        actionTuple = Agent.move(self, BoardElement.AGENT_BOT, self.game.getState().asVector(BoardElement.AGENT_BOT), epsilon)
         
-        print("game ", action)
-        return action
+        #print("game ", actionTuple[1])
+        return actionTuple
     
     
         
