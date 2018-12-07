@@ -29,3 +29,8 @@ class Point:
     
     def toTuple(self):
         return (self.X, self.Y)
+    def __eq__(self, other):
+        return self.X == other.X and self.Y == other.Y
+    
+    def __add__(self, other):
+        return Point(self.X = other.X, self.Y + other.Y)

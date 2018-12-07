@@ -11,6 +11,7 @@ import sys
 from Agents import Action
 from GameState import GameState
 from GameState import BoardElement
+from Point import Point
 
 from Agents import TopAgent
 from Agents import BottomAgent
@@ -289,13 +290,13 @@ class Qoridor:
     def getAllNeighbors(self, space):
         neighbors = []
         if space[0] > 0:
-            neighbors.append((space[0] - 1, space[1]))
+            neighbors.append(Point(space[0] - 1, space[1]))
         if space[0] < 8:
-            neighbors.append((space[0] + 1, space[1]))
+            neighbors.append(Point(space[0] + 1, space[1]))
         if space[1] > 0:
-            neighbors.append((space[0], space[1] - 1))
+            neighbors.append(Point(space[0], space[1] - 1))
         if space[1] < 8:
-            neighbors.append((space[0], space[1] + 1))
+            neighbors.append(Point(space[0], space[1] + 1))
         return neighbors
 
     #draws it to the screen
@@ -337,35 +338,57 @@ class Qoridor:
             self.screen.blit(s, (0, 0))
 
     #gets value of a space, returns 7 if out of bounds
+    #should be unnecssary.  Replace with an "isoccupied" function.  Check if any agent is in that space.
+    #space will be passed as a point
     def getSpace(self, space):
-        if space[0] >= 0 and space[0] <= 8 and space[1] >= 0 and space[1] <= 8:
-            return self.spaces[space[0]][space[1]]
+        if space.X >= 0 and space.X <= self.gridSize and space.Y >= 0 and space.Y <= self.gridSize:
+            if(self.state.topAgentPosition == space):
+                return BoardElement.AGENT_TOP
+            elif(self.state.botAgentPosition == space):
+                return BoardElement.AGENT_BOT
+            else:
+                return BoardElement.EMPTY
         else:
-            return 7;
+            return BoardElement.OFF_GRID;
 
     #adds 2d tuples
+    #should be completely unnecessary from here on out
     def tupAdd(self, tup1, tup2):
         return (tup1[0] + tup2[0], tup1[1] + tup2[1])
 
+    #maybeMove needs to be changed to be an action.
+    #actions have been updated to allow for comparison
     def maybeMoveChanged(self, agent, mousePosition):
         maybeMove = self.getMoveFromMousePos(agent, mousePosition)
         #test = (maybeMove != self.lastMaybeMove)
         return maybeMove != self.lastMaybeMove
 
+    #accepts an action and returns a point delta associated
+    def actionToDelta(action):
+        if(action == Action.UP):
+            return Point(0, -1)
+        elif action == Action.DOWN:
+            return Point(0, 1)
+        elif action == Action.RIGHT:
+            return Point(0, 1)
+        elif action == Action.LEFT:
+            return Point(0, -1)
+        return Point(0,0)
+        
 
-    #gets all possible pawn moves as absolute positions
+    #gets all possible pawn moves as action objects
     def getPawnMoves(self, space):
         
         #print "getting pawn moves ", space
-        neighbors = [space]
-        for neighbor in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-            target = self.tupAdd(space, neighbor)
-            if self.getSpace(target) == -1:
+        actions = [space]
+        for action in [Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT]:
+            target = space + self.actionToDelta(action)
+            if self.getSpace(target) == BoardElement.EMPTY:
                 if self.canMoveTo(space, target):
-                    neighbors.append(target)
+                    actions.append(Action(Action.PAWN, action), None, space)
                     
             #if no direct move available, see if we can jump the pawn directly
-            elif self.getSpace(self.tupAdd(space, [2*x for x in neighbor])) == -1 and self.canMoveTo(target, self.tupAdd(space, [2*x for x in neighbor])):
+           """ elif self.getSpace(self.tupAdd(space, [2*x for x in neighbor])) == -1 and self.canMoveTo(target, self.tupAdd(space, [2*x for x in neighbor])):
                 neighbors.append(self.tupAdd(space, tuple(2*x for x in neighbor)))
             else: #now check diagonal jumps.
                 if neighbor[0] == 0:
@@ -387,10 +410,11 @@ class Qoridor:
                     if self.getSpace(diag) == -1:
                         if self.canMoveTo(space, self.tupAdd(space, neighbor)) and self.canMoveTo(
                                 self.tupAdd(space, neighbor), diag):
-                            neighbors.append(diag)
-        return neighbors
+                            neighbors.append(diag)"""
+        return actions
 
     #determine if there's a wall at this intersection.  if offboard, returns no wall
+    #this really shouldn't need to exist as it is.
     def isWall(self, x, y):
         if x < 0 or x > 7 or y < 0 or y > 7:
             return 0

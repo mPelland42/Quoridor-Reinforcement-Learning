@@ -1,3 +1,4 @@
+aconda navigator
 # -*- coding: utf-8 -*-
 """
 Created on Sat Dec  1 15:54:50 2018
@@ -104,6 +105,14 @@ class Action:
         if s is None:
             return 'NULL'
         return str(s)
+    
+    def __eq__(self, other);:
+        return self.actionType == other.actionType and
+                self.direction == other.direction and
+                self.orientation == other.orientation and
+                self.position == other.position
+    def __ne__(self, other):
+        return not self == other
 
     def __str__(self):
         return "Action: " + self.xstr(self.actionType) + " Direction: " + self.xstr(self.direction) + \

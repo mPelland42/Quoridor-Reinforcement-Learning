@@ -19,6 +19,7 @@ class BoardElement():
     WALL_VERTICAL = 2
     AGENT_TOP = 3
     AGENT_BOT = 4
+    OFF_GRID = 5
     
 
 class GameState:
