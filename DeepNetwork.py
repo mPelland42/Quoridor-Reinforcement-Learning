@@ -25,3 +25,5 @@ class DeepNetwork:
                     name=scope_name + '_l' + str(i)
                 )
         return inputs
+    
+    

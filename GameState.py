@@ -11,14 +11,14 @@ AgentState is the state of the game from this agent's perspective
 import math
 from Point import Point
 import copy
-
+import numpy as np
 
 class BoardElement():
     EMPTY = 0
-    AGENT_TOP = 1
-    AGENT_BOT = 2
-    WALL_HORIZONTAL = 3
-    WALL_VERTICAL = 4
+    WALL_HORIZONTAL = 1
+    WALL_VERTICAL = 2
+    AGENT_TOP = 3
+    AGENT_BOT = 4
     
 
 class GameState:
@@ -29,26 +29,47 @@ class GameState:
         self.botAgentPosition = Point(math.floor(gridSize/2), gridSize-1)
         
         self.walls = {BoardElement.AGENT_TOP: 10, BoardElement.AGENT_BOT: 10}
+        self.movesTaken = 0
+        
+        self.winner = None
         
         
     def updateAgentPosition(self, agentType, position):
         if agentType == BoardElement.AGENT_TOP:
             self.topAgentPosition = position
+            if position.Y == self.gridSize - 1:
+                self.winner = BoardElement.AGENT_TOP
+                
         elif agentType == BoardElement.AGENT_BOT:
             self.botAgentPosition = position
-    
+            if position.Y == 0:
+                self.winner = BoardElement.AGENT_BOT
+        self.movesTaken += 1
+        
     def getPosition(self, agentType):
         if agentType == BoardElement.AGENT_TOP:
             return copy.copy(self.topAgentPosition)
         elif agentType == BoardElement.AGENT_BOT:
             return copy.copy(self.botAgentPosition)
     
+    def getMovesTaken(self):
+        return self.movesTaken
+    
     def addIntersection(self, position, orientation):
         self.intersections[position.X][position.Y] = orientation
+        self.movesTaken += 1
     
     def removeWallCount(self, agentType):
         self.walls[agentType] -= 1
+        
+    def getWallCount(self, agentType):
+        return self.walls[agentType]
     
+    
+    def getWinner(self):
+        return self.winner
+        
+        
     # vector inputs into the neural net need to look identical
     # so top and bot have the same seperate but fair perspectives of the game
     def asVector(self, agentType):
@@ -68,6 +89,7 @@ class GameState:
             # my walls, then enemy walls
             v.append(self.walls[BoardElement.AGENT_TOP])
             v.append(self.walls[BoardElement.AGENT_BOT])
+            v.append(self.movesTaken)
                         
                     
             
@@ -88,18 +110,24 @@ class GameState:
             # my walls, then enemy walls
             v.append(self.walls[BoardElement.AGENT_BOT])
             v.append(self.walls[BoardElement.AGENT_TOP])
+            v.append(self.movesTaken)
             
             
-        return v
+        return np.array(v)
         
         
         
     def __str__(self):
-        s = "intersections: " + " ".join(str(x) for x in self.intersections) +"\n"
+        s = "walls: \n"
+        for y in range(self.gridSize-1):
+            for x in range(self.gridSize-1):
+                s += str(self.intersections[x][y])
+            s+= "\n"
+        
         s += "TopAgentPosition: " + str(self.topAgentPosition) + "\n"
-        s += "BotAgentPosition: "+ str(self.butAgentPosition) + "\n"
-        s += "Top Agent's walls left: " + str(self.wall[BoardElement.AGENT_TOP]) + "\n"
-        s += "Bot agent's walls left: " + str(self.wall[BoardElement.AGENT_BOT]) + "\n"
+        s += "BotAgentPosition: "+ str(self.botAgentPosition) + "\n"
+        s += "Top Agent's walls left: " + str(self.walls[BoardElement.AGENT_TOP]) + "\n"
+        s += "Bot agent's walls left: " + str(self.walls[BoardElement.AGENT_BOT]) + "\n"
         return s
     
     
