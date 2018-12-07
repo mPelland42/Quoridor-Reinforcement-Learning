@@ -6,30 +6,31 @@ from Memory import Memory
 
 import tensorflow as tf
 
-
+#import time
 
 gridSize = 9
-gameSpeed = 0
+gameSpeed = 1
 displayGame = False
 humanPlaying = False
 
 
-MEMORY = 50000
-NUM_EPISODES = 300
-BATCH_SIZE = 100
+MEMORY = 200000
+NUM_EPISODES = 500
+BATCH_SIZE = 50
  #max decay, min decay
 MAX_EPSILON = 1.0
 MIN_EPSILON = 0.0
-LAMBDA = 0.00001 # decay
+LAMBDA = 0.00010 # decay
 
 
 
-        
+
 game = Qoridor(gridSize, gameSpeed, displayGame, humanPlaying)
 model = Model(game.getStateSize(), game.getActionSize(), BATCH_SIZE)
 mem = Memory(MEMORY)
 
 
+#with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
 with tf.Session() as sess:
     sess.run(model._var_init)
     
@@ -40,7 +41,7 @@ with tf.Session() as sess:
         while cnt < NUM_EPISODES:
             if cnt % 10 == 0:
                 print('Episode {} of {}'.format(cnt+1, NUM_EPISODES))
-                game.printEpsilon()
+                game.printDetails()
             game.run()
             cnt += 1
         #plt.plot(gr.reward_store)
@@ -50,8 +51,5 @@ with tf.Session() as sess:
         #plt.show()
     else:
         print("testing, 1..2..3..")
-
-
-
 
 

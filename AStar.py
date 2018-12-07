@@ -12,7 +12,6 @@ def AStar(game, startSpace, goalTest, heuristic):
         if goalTest(currState[1]):
             return currState
         else:
-            moves = game.getPawnMoves(currState[1])
             for move in game.getPawnMoves(currState[1]):
                 #move = tuple(sum(x) for x in zip(move, currState[1]))
                 if move not in explored:

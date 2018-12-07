@@ -33,9 +33,9 @@ class Qoridor:
     def __init__(self, gridSize, gameSpeed, displayGame, humanPlaying):
 
         # game colors for display
-        self.agentColors = [(153, 0, 255), (0, 102, 153)] #purple & blue
-        self.squareColor = (179, 255, 179) # light green
-        self.wallColor = (0, 102, 0) # green
+        self.agentColors = [(230, 46, 0), (0, 0, 255)] #red & purple
+        self.squareColor = (255, 255, 255) # light green
+        self.wallColor = (51, 153, 51) # green
         
         # flags
         self.gridSize = gridSize
@@ -49,6 +49,9 @@ class Qoridor:
         
         # reset game state
         self.reset()
+        
+        self.localAvgGameLength = 0
+        self.randomActions = True
         
 
 
@@ -114,10 +117,11 @@ class Qoridor:
         
         previousState = None
         previousAction = None
+        done = False
         
         
         # run game till we have a winner
-        while True:
+        while not done:
             drawn = False
             if agents[currentAgent] == AI:
                 #print ("\n============================================")
@@ -129,16 +133,26 @@ class Qoridor:
                 self.movesTaken += 1
                 
                 state = self.state.asVector(agentType)
-                self.performAction(currentAgent, action)
+                if action == None:
+                    done = True
+                    break
+                else:
+                    reward = self.performAction(currentAgent, action)
                 #newState = self.state.asVector(agentType)
-                    
+                
+                
+                            
                 if not firstMove:
-                    if self.state.getWinner() == None:
-                        self.memory.addSample((previousState, previousAction, 0, state))
+                    if self.movesTaken > 200:
+                        done = True
                     else:
-                        # reward for winning, penalize for losing
-                        self.memory.addSample((state, actionIndex, 100, None))
-                        self.memory.addSample((previousState, previousAction, -100, state))
+                        if self.state.getWinner() == None:
+                            self.memory.addSample((previousState, previousAction, reward, state))
+                        else:
+                            self.memory.addSample((state, actionIndex, reward + 200, None))
+                            self.memory.addSample((previousState, previousAction, reward - 200, state))
+                            done = True
+                    agent.learn()
                 else:
                     firstMove = False
                     
@@ -147,6 +161,8 @@ class Qoridor:
                 
                 currentAgent = (currentAgent + 1) % 2
                 
+                
+        
                 self.steps += 1
                 self.epsilon = self.MIN_EPSILON + (self.MAX_EPSILON - self.MIN_EPSILON) \
                     * math.exp(-self.LAMBDA * self.steps)
@@ -184,23 +200,60 @@ class Qoridor:
                 if drawn:
                     pygame.display.flip()
                     pygame.display.update()
+                time.sleep(self.gameSpeed)
                     
-                    
-            #print("sleeping for ", self.gameSpeed)
-            time.sleep(self.gameSpeed) # so we can see wtf is going on
-                    
-                    
-            if not (self.state.getWinner() == None):
-                # either agent can call learn()
-                # since they use the same model
-                self.super_agents[0].learn()
-                self.movesTillVictory.append(self.movesTaken)
-                print("Moves taken: ", self.movesTaken)
-                break
+        #print("sleeping for ", self.gameSpeed)
+        #time.sleep(self.gameSpeed) # so we can see wtf is going on
+                
+        # either agent can call learn()
+        # since they use the same model
+        self.movesTillVictory.append(self.movesTaken)
+        print(" ", self.movesTaken)
+        self.localAvgGameLength += self.movesTaken
 
-    def printEpsilon(self):
-        print("Epsilon: "+"{:.6f}".format(self.epsilon));
+    def printDetails(self):
+        print("Epsilon: "+"{:.6f}".format(self.epsilon))
+        print("Memory Used: ", self.memory.getTotalMem())
+        self.localAvgGameLength = self.localAvgGameLength / 10
+        print("Local Average Game Length: ", self.localAvgGameLength)
+        
+        if self.epsilon < 0.45:
+            self.displayGame = True
+            self.gameSpeed = 0.5
+            self.randomActions = False
+        self.localAvgGameLength = 0
+        print("Moves taken: ")
+        
 
+
+
+    def drawError(self):
+        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA, 32)
+        self.draw(0, (0, 0))
+        pygame.display.flip()
+        pygame.display.update()
+
+        self.screen.fill(0)
+        self.draw(currentAgent, pygame.mouse.get_pos())
+        drawn = True
+
+        
+        if self.maybeMoveChanged(currentAgent, pygame.mouse.get_pos()):
+            self.screen.fill(0)
+            self.draw(currentAgent, pygame.mouse.get_pos())
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+        if drawn:
+            pygame.display.flip()
+            pygame.display.update()
+            
+        time.sleep(100)
+                
+                
+                
     def getStateSize(self):
         return len(self.state.asVector(BoardElement.AGENT_TOP))
         
@@ -286,7 +339,7 @@ class Qoridor:
 
     def maybeMoveChanged(self, agent, mousePosition):
         maybeMove = self.getMoveFromMousePos(agent, mousePosition)
-        test = (maybeMove != self.lastMaybeMove)
+        #test = (maybeMove != self.lastMaybeMove)
         return maybeMove != self.lastMaybeMove
 
 
@@ -366,9 +419,13 @@ class Qoridor:
             
             if agent == 0: # top
                 self.state.updateAgentPosition(BoardElement.AGENT_TOP, action.getPosition())
+                #return self.state.getPosition(BoardElement.AGENT_BOT).Y + \
+                #    action.getPosition().Y
                 
             elif agent == 1: # bot
                 self.state.updateAgentPosition(BoardElement.AGENT_BOT, action.getPosition())
+                #return (self.gridSize - self.state.getPosition(BoardElement.AGENT_TOP).Y) + \
+                #    (self.gridSize - action.getPosition().Y)
                 
         else:
             self.wallCounts[agent] -= 1
@@ -390,6 +447,29 @@ class Qoridor:
                 self.state.removeWallCount(BoardElement.AGENT_BOT)
                 
         
+        
+        
+        
+        topPathLength = AStar(self, self.state.getPosition(BoardElement.AGENT_TOP).toTuple(), lambda square : \
+                square[1] == self.gridSize-1, lambda square : abs(square[1] - self.gridSize-1))[2]
+        
+        botPathLength = AStar(self, self.state.getPosition(BoardElement.AGENT_BOT).toTuple(), lambda square : \
+                square[1] == 0, lambda square : abs(square[1]))[2]
+        
+        
+        if agent == 0: # top
+            return 10*(botPathLength - topPathLength) - self.movesTaken
+        else:
+            return 10*(topPathLength - botPathLength) - self.movesTaken
+        
+        '''
+        if agent == 0: # top
+            return 10*(botPathLength - topPathLength)\
+                + 4 * self.state.getWallCount(BoardElement.AGENT_TOP) - self.movesTaken
+        else:
+            return 10*(topPathLength - botPathLength)\
+                + 4 * self.state.getWallCount(BoardElement.AGENT_BOT) - self.movesTaken
+        '''
         
 
     def playerAction(self, agent, mousePosition):
@@ -492,6 +572,7 @@ class Qoridor:
         if move[0] == 'p':
             legalMoves = self.getPawnMoves(self.agents[agent])
             for i in legalMoves:
+                #print("legalMoves: ", legalMoves)
                 if(i[0] == move[1][0] and i[1] == move[1][1]):
                     return True
             return False

@@ -15,10 +15,9 @@ import tensorflow as tf
 import copy
 import random
 
-MEMORY = 50000
-NUM_EPISODES = 300
 
 
+moveProbability = 0.97
 
 
 
@@ -26,12 +25,16 @@ class Action:
     PAWN = "PAWN"
     WALL = "WALL"
     
-    NUM_DIRECTIONS = 5
+    NUM_DIRECTIONS = 4
     UP = "UP"
     DOWN = "DOWN"
     LEFT = "LEFT"
     RIGHT = "RIGHT"
-    STAY = "STAY"
+    JUMP_UP = "UP"
+    JUMP_DOWN = "DOWN"
+    JUMP_LEFT = "LEFT"
+    JUMP_RIGHT = "RIGHT"
+    #STAY = "STAY"
     
     
     def __init__(self, actionType, direction = None, orientation = None, position = None):
@@ -44,12 +47,16 @@ class Action:
     def makeAllActions(gridSize):
         
         # define all possible actions
-        allActions = []
+        allActions = list()
         allActions.append(Action(Action.PAWN, Action.UP))
         allActions.append(Action(Action.PAWN, Action.DOWN))
         allActions.append(Action(Action.PAWN, Action.LEFT))
         allActions.append(Action(Action.PAWN, Action.RIGHT))
-        allActions.append(Action(Action.PAWN, Action.STAY))
+        allActions.append(Action(Action.PAWN, Action.JUMP_UP))
+        allActions.append(Action(Action.PAWN, Action.JUMP_DOWN))
+        allActions.append(Action(Action.PAWN, Action.JUMP_LEFT))
+        allActions.append(Action(Action.PAWN, Action.JUMP_RIGHT))
+        #allActions.append(Action(Action.PAWN, Action.STAY))
         
         for x in range(gridSize - 1):
             for y in range(gridSize - 1):
@@ -83,6 +90,15 @@ class Action:
             self.position.addToX(1)
         elif self.direction == Action.LEFT:
             self.position.addToX(-1)
+        
+        elif self.direction == Action.JUMP_UP:
+            self.position.addToY(2)
+        elif self.direction == Action.JUMP_DOWN:
+            self.position.addToY(-2)
+        elif self.direction == Action.JUMP_RIGHT:
+            self.position.addToX(2)
+        elif self.direction == Action.JUMP_LEFT:
+            self.position.addToX(-2)
     
     def xstr(self,s):
         if s is None:
@@ -152,20 +168,47 @@ class Agent:
         # might need to implement a negative reward for them if performance sucks
         
         
-        if random.random() < epsilon:
+        if self.game.randomActions and (random.random() < epsilon):
+            count = 0
             while True:
-                randomAction = random.randint(0, self.model.getNumActions() - 1)
+                if random.random() < moveProbability:
+                    randomAction = random.randint(0, 3)
+                else:
+                    randomAction = random.randint(4, self.model.getNumActions() - 1)
+                
+                count += 1
+                if count > 1000:
+                    return -1, None
+                    
                 if not self.invalidMove(randomAction, agentType, self.game.getState()):
                     break
+                
             return randomAction, self.allActions[randomAction]
         
         else:
             q = self.model.predictOne(currentStateVector, self.sess)
             q = q.flatten()
-            values, indices = self.sess.run(tf.nn.top_k(q, len(q)-1))
+            values, indices = self.sess.run(tf.nn.top_k(q, len(q)))
             i = 0
-            while self.invalidMove(indices[i], agentType, self.game.getState()):
-                i += 1
+            try:
+                while self.invalidMove(indices[i], agentType, self.game.getState()):
+                    #self.memory.addSample((self.game.getState().asVector(self.agentType),\
+                                           #indices[i], -10, None))
+                    i += 1
+            except IndexError:
+                #print("ERROR!")
+                #print("q: ", q)
+                #print("indices: ", indices)
+                #print("indicesLEN: ", len(indices))
+                #print("values: ", values)
+                #print("all actions: ")
+                #for a in self.allActions: print(a)
+                #print("i:", i)
+                #print("agentType: ", agentType)
+                #print("state: ", self.game.getState())
+                ##print("action: ", self.allActions[indices[i]])
+                #self.game.drawError()
+                return -1, None
             chosenAction = indices[i]
             return chosenAction, self.allActions[chosenAction]
             
@@ -191,6 +234,14 @@ class Agent:
                     position.addToY(1)
                 elif action.getDirection() == Action.DOWN:
                     position.addToY(-1)
+                elif action.getDirection() == Action.JUMP_LEFT:
+                    position.addToX(2)
+                elif action.getDirection() == Action.JUMP_RIGHT:
+                    position.addToX(-2)
+                elif action.getDirection() == Action.JUMP_UP:
+                    position.addToY(2)
+                elif action.getDirection() == Action.JUMP_DOWN:
+                    position.addToY(-2)
             else:
                 position = Point(self.game.getGridSize() - position.X - 2, position.Y)
 
@@ -208,6 +259,14 @@ class Agent:
                     position.addToY(-1)
                 elif action.getDirection() == Action.DOWN:
                     position.addToY(1)
+                elif action.getDirection() == Action.JUMP_LEFT:
+                    position.addToX(-2)
+                elif action.getDirection() == Action.JUMP_RIGHT:
+                    position.addToX(2)
+                elif action.getDirection() == Action.JUMP_UP:
+                    position.addToY(-2)
+                elif action.getDirection() == Action.JUMP_DOWN:
+                    position.addToY(2)
             else:
                 position = Point(position.X, self.game.getGridSize() - position.Y - 2)
                 

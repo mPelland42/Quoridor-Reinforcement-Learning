@@ -26,3 +26,6 @@ class Point:
 
     def __str__(self):
         return "(" + self.xstr(self.X) + "," + self.xstr(self.Y) + ")"
+    
+    def toTuple(self):
+        return (self.X, self.Y)

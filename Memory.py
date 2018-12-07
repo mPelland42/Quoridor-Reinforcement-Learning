@@ -21,3 +21,6 @@ class Memory:
             return random.sample(self._samples, len(self._samples))
         else:
             return random.sample(self._samples, no_samples)
+        
+    def getTotalMem(self):
+        return len(self._samples)
