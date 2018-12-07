@@ -1,4 +1,5 @@
 import pygame
+from pygame.locals import *
 
 from AStar import AStar
 
@@ -52,6 +53,7 @@ class Qoridor:
         
         self.localAvgGameLength = 0
         self.randomActions = True
+        self.currentlyDrawing = True
         
 
 
@@ -103,6 +105,7 @@ class Qoridor:
             self.draw(0, (0, 0))
             pygame.display.flip()
             pygame.display.update()
+            self.currentlyDisplaying = True
             
         
         # reset agents
@@ -122,6 +125,9 @@ class Qoridor:
         
         # run game till we have a winner
         while not done:
+            #pygame handling
+            
+            
             drawn = False
             if agents[currentAgent] == AI:
                 #print ("\n============================================")
@@ -172,19 +178,14 @@ class Qoridor:
                     
     
             if self.displayGame:
-                self.screen.fill(0)
-                self.draw(currentAgent, pygame.mouse.get_pos())
-                drawn = True
-    
-                
-                if self.maybeMoveChanged(currentAgent, pygame.mouse.get_pos()):
-                    self.screen.fill(0)
-                    self.draw(currentAgent, pygame.mouse.get_pos())
+               
     
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         pygame.quit()
                         sys.exit()
+                    if event.type == pygame.KEYDOWN:
+                        self.currentlyDrawing = not self.currentlyDrawing
                     if event.type == pygame.MOUSEBUTTONDOWN and agents[currentAgent] == HUMAN:
                         if self.playerAction(currentAgent, pygame.mouse.get_pos()):
                             if self.endGame() != -1:
@@ -194,9 +195,18 @@ class Qoridor:
                                 self.reset()
                             else:
                                 currentAgent = (currentAgent+1)%2
-                            self.screen.fill(0)
-                            self.draw(currentAgent, pygame.mouse.get_pos())
-                            drawn = True
+                            #self.screen.fill(0)
+                            #self.draw(currentAgent, pygame.mouse.get_pos())
+                            #drawn = True
+                if(self.currentlyDrawing):
+                    self.screen.fill(0)
+                    self.draw(currentAgent, pygame.mouse.get_pos())
+                    drawn = True
+    
+                
+                #if self.maybeMoveChanged(currentAgent, pygame.mouse.get_pos()):
+                #    self.screen.fill(0)
+                #    self.draw(currentAgent, pygame.mouse.get_pos())
                 if drawn:
                     pygame.display.flip()
                     pygame.display.update()
