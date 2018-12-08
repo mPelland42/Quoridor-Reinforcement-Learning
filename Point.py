@@ -29,3 +29,23 @@ class Point:
     
     def toTuple(self):
         return (self.X, self.Y)
+    def __eq__(self, other):
+        #try catch because sometimes comparing actions compars a point to None
+        try:
+            return self.X == other.X and self.Y == other.Y
+        except:
+            return False
+    
+    #needed for A*
+    def __hash__(self):
+        return hash(self.toTuple())
+    
+    def __add__(self, other):
+        return Point(self.X + other.X, self.Y + other.Y)
+    
+    #needed for A*
+    def __lt__(self, other):
+        return self.X < other.X or (self.X == other.X and self.Y < other.Y)
+    
+    def __repr__(self):
+        return  "Point (" + str(self.X) + ", " + str(self.Y) + ")"

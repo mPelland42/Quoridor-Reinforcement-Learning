@@ -11,6 +11,7 @@ import sys
 from Agents import Action
 from GameState import GameState
 from GameState import BoardElement
+from Point import Point
 
 from Agents import TopAgent
 from Agents import BottomAgent
@@ -37,24 +38,24 @@ class Qoridor:
         self.agentColors = [(230, 46, 0), (0, 0, 255)] #red & purple
         self.squareColor = (255, 255, 255) # light green
         self.wallColor = (51, 153, 51) # green
-        
+
         # flags
         self.gridSize = gridSize
         self.gameSpeed = gameSpeed
         self.displayGame = displayGame
-        
-        
+
+
         self.actions = Action.makeAllActions(gridSize)
-        
+
         self.movesTillVictory = []
-        
+
         # reset game state
         self.reset()
-        
+
         self.localAvgGameLength = 0
         self.randomActions = True
         self.currentlyDrawing = True
-        
+
 
 
 
@@ -66,12 +67,12 @@ class Qoridor:
         self.MAX_EPSILON = MAX_EPSILON
         self.MIN_EPSILON = MIN_EPSILON
         self.LAMBDA = LAMBDA
-        
+
         self.epsilon = MAX_EPSILON
         self.steps = 0
         self.rewardStore = []
         self.MaxXStore = []
-        
+
         print("Setting up agent networks...")
         self.topAgent = TopAgent(self, sess, model, memory)
         self.bottomAgent = BottomAgent(self, sess, model, memory)
@@ -81,24 +82,12 @@ class Qoridor:
 
     def reset(self):
         self.turn = 1
-        self.lastMaybeMove = ('p', -1, -1)
-        
+        self.lastMaybeMove = None
+
         self.movesTaken = 0
-        
+
         self.state = GameState(self.gridSize)
-        
-        self.spaces = [[-1 for x in range(9)] for x in range(9)]
-        self.intersections = [[0 for x in range(8)] for x in range(8)]
-        self.agents = [(4, 0), (4, 8)]
-        
-        for i in range(len(self.agents)):
-            self.spaces[self.agents[i][0]][self.agents[i][1]] = i
-        self.wallCounts = [10, 10]
-        self.walls = []
-        
-        for i in self.walls: #for debugging
-            self.intersections[i[0]][i[1]] = i[2]
-            
+
         # also reset the visuals
         if self.displayGame:
             self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA, 32)
@@ -106,48 +95,48 @@ class Qoridor:
             pygame.display.flip()
             pygame.display.update()
             self.currentlyDisplaying = True
-            
-        
+
+
         # reset agents
-        
-        
+
+
     def run(self):
-        
+
         # reset game
         self.reset()
         currentAgent = 0
         firstMove = True
-        
+
         previousState = None
         previousAction = None
         done = False
-        
-        
+
+
         # run game till we have a winner
         while not done:
             #pygame handling
-            
-            
+
+
             drawn = False
             if agents[currentAgent] == AI:
                 #print ("\n============================================")
-                
+
                 agent = self.super_agents[currentAgent]
                 agentType = agent.getType()
-                
+
                 actionIndex, action = agent.move(self.epsilon)
                 self.movesTaken += 1
-                
+
                 state = self.state.asVector(agentType)
-                if action == None:
+                if action is None:
                     done = True
                     break
                 else:
                     reward = self.performAction(currentAgent, action)
                 #newState = self.state.asVector(agentType)
-                
-                
-                            
+
+
+
                 if not firstMove:
                     if self.movesTaken > 200:
                         done = True
@@ -161,25 +150,25 @@ class Qoridor:
                     agent.learn()
                 else:
                     firstMove = False
-                    
+
                 previousState = state
                 previousAction = actionIndex
-                
+
                 currentAgent = (currentAgent + 1) % 2
-                
-                
-        
+
+
+
                 self.steps += 1
                 self.epsilon = self.MIN_EPSILON + (self.MAX_EPSILON - self.MIN_EPSILON) \
                     * math.exp(-self.LAMBDA * self.steps)
                 #print("epsilon: ", self.epsilon)
 
-                    
-                    
-    
+
+
+
             if self.displayGame:
-               
-    
+
+
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         pygame.quit()
@@ -202,8 +191,8 @@ class Qoridor:
                     self.screen.fill(0)
                     self.draw(currentAgent, pygame.mouse.get_pos())
                     drawn = True
-    
-                
+
+
                 #if self.maybeMoveChanged(currentAgent, pygame.mouse.get_pos()):
                 #    self.screen.fill(0)
                 #    self.draw(currentAgent, pygame.mouse.get_pos())
@@ -211,10 +200,10 @@ class Qoridor:
                     pygame.display.flip()
                     pygame.display.update()
                 time.sleep(self.gameSpeed)
-                    
+
         #print("sleeping for ", self.gameSpeed)
         #time.sleep(self.gameSpeed) # so we can see wtf is going on
-                
+
         # either agent can call learn()
         # since they use the same model
         self.movesTillVictory.append(self.movesTaken)
@@ -226,14 +215,14 @@ class Qoridor:
         print("Memory Used: ", self.memory.getTotalMem())
         self.localAvgGameLength = self.localAvgGameLength / 10
         print("Local Average Game Length: ", self.localAvgGameLength)
-        
+
         if self.epsilon < 0.45:
             self.displayGame = True
             self.gameSpeed = 0.5
             self.randomActions = False
         self.localAvgGameLength = 0
         print("Moves taken: ")
-        
+
 
 
 
@@ -247,7 +236,7 @@ class Qoridor:
         self.draw(currentAgent, pygame.mouse.get_pos())
         drawn = True
 
-        
+
         if self.maybeMoveChanged(currentAgent, pygame.mouse.get_pos()):
             self.screen.fill(0)
             self.draw(currentAgent, pygame.mouse.get_pos())
@@ -259,24 +248,26 @@ class Qoridor:
         if drawn:
             pygame.display.flip()
             pygame.display.update()
-            
+
         time.sleep(100)
-                
-                
-                
+
+
+
     def getStateSize(self):
         return len(self.state.asVector(BoardElement.AGENT_TOP))
-        
+
     def getActionSize(self):
         return len(Action.makeAllActions(self.gridSize))
-        
+
     def getState(self):
         return self.state
-    
+
     def getGridSize(self):
         return self.gridSize
 
     #returns winner if game is over, else returns -1
+    #I don't think this is used at all anymore,
+    #DEPRECATED
     def endGame(self):
         if self.agents[0][1] == 8:
             return 0
@@ -289,16 +280,17 @@ class Qoridor:
     def getAllNeighbors(self, space):
         neighbors = []
         if space[0] > 0:
-            neighbors.append((space[0] - 1, space[1]))
+            neighbors.append(Point(space[0] - 1, space[1]))
         if space[0] < 8:
-            neighbors.append((space[0] + 1, space[1]))
+            neighbors.append(Point(space[0] + 1, space[1]))
         if space[1] > 0:
-            neighbors.append((space[0], space[1] - 1))
+            neighbors.append(Point(space[0], space[1] - 1))
         if space[1] < 8:
-            neighbors.append((space[0], space[1] + 1))
+            neighbors.append(Point(space[0], space[1] + 1))
         return neighbors
 
     #draws it to the screen
+    #this needs a _lot_ of edits to make up to date
     def draw(self, currAgent, mousePos):
 
         #needs to be edited to only display changes.
@@ -308,16 +300,22 @@ class Qoridor:
         for i in range(9):
             for j in range(9):
                 pygame.draw.rect(self.screen, self.squareColor, [i*boxSize + shift, j*boxSize + shift, boxSize, boxSize], 10)
-        for i in range(len(self.agents)):
-            pygame.draw.circle(self.screen, self.agentColors[i], (int(self.agents[i][0] * boxSize + boxSize/2 + shift), int(self.agents[i][1] * boxSize + boxSize/2 + shift)), int(boxSize * .25))
-        for i in self.walls:
+        topAgentPos = self.state.agentPositions[BoardElement.AGENT_TOP]
+        pygame.draw.circle(self.screen, self.agentColors[0], (int(topAgentPos.X * boxSize + boxSize/2 + shift), int(topAgentPos.Y * boxSize + boxSize/2 + shift)), int(boxSize * .25))
+        botAgentPos = self.state.agentPositions[BoardElement.AGENT_BOT]
+        pygame.draw.circle(self.screen, self.agentColors[1], (int(botAgentPos.X * boxSize + boxSize/2 + shift), int(botAgentPos.Y * boxSize + boxSize/2 + shift)), int(boxSize * .25))
+
+        #needs to be rewritten/readded to how things are structured.
+        for i in self.state.wallPositions:
             #if __name__ == '__main__':
                 if i[1] == 2:
-                    pygame.draw.rect(self.screen, self.wallColor, [i[0][0]*boxSize + shift + 5, (i[0][1] + 1)*boxSize + shift, boxSize*2 - 10, 1], 10)
+                    pygame.draw.rect(self.screen, self.wallColor, [i[0].X*boxSize + shift + 5, (i[0].Y + 1)*boxSize + shift, boxSize*2 - 10, 1], 10)
                 else:
-                    pygame.draw.rect(self.screen, self.wallColor, [(i[0][0] + 1) * boxSize + shift, i[0][1] * boxSize + shift + 5, 1, boxSize*2 - 10], 10)
+                    pygame.draw.rect(self.screen, self.wallColor, [(i[0].X + 1) * boxSize + shift, i[0].Y * boxSize + shift + 5, 1, boxSize*2 - 10], 10)
 
         #show potential move
+        #currently commenting out to focus on bots
+        """
         self.lastMaybeMove = maybeMove = self.getMoveFromMousePos(currAgent, mousePos)
         if self.isLegalMove(currAgent, maybeMove):
             s = pygame.Surface((self.screen.get_height(), self.screen.get_width()), pygame.SRCALPHA)
@@ -335,38 +333,68 @@ class Qoridor:
                                      [(maybeMove[1][0] + 1) * boxSize + shift, maybeMove[1][1] * boxSize + shift + 5, 1, boxSize * 2 - 10],
                                      10)
             self.screen.blit(s, (0, 0))
+            """
 
     #gets value of a space, returns 7 if out of bounds
+    #should be unnecssary.  Replace with an "isoccupied" function.  Check if any agent is in that space.
+    #space will be passed as a point
+    #should be completely unneessary
     def getSpace(self, space):
-        if space[0] >= 0 and space[0] <= 8 and space[1] >= 0 and space[1] <= 8:
-            return self.spaces[space[0]][space[1]]
+        if space.X >= 0 and space.X <= self.gridSize and space.Y >= 0 and space.Y <= self.gridSize:
+            if(self.state.agentPositions[BoardElement.AGENT_TOP] == space):
+                return BoardElement.AGENT_TOP
+            elif(self.state.agentPositions[BoardElement.AGENT_BOT] == space):
+                return BoardElement.AGENT_BOT
+            else:
+                return BoardElement.EMPTY
         else:
-            return 7;
+            return BoardElement.OFF_GRID;
+
+    def isClear(self, space):
+        if space.X >= 0 and space.X <= self.gridSize and space.Y >= 0 and space.Y <= self.gridSize:
+            return self.state.agentPositions[BoardElement.AGENT_TOP] != space and self.state.agentPositions[BoardElement.AGENT_BOT] != space
+        else: #is off the grid, hence not clear
+            return False
 
     #adds 2d tuples
+    #should be completely unnecessary from here on out
+    #use point + point instead
     def tupAdd(self, tup1, tup2):
         return (tup1[0] + tup2[0], tup1[1] + tup2[1])
 
+    #maybeMove needs to be changed to be an action.
+    #actions have been updated to allow for comparison
     def maybeMoveChanged(self, agent, mousePosition):
         maybeMove = self.getMoveFromMousePos(agent, mousePosition)
         #test = (maybeMove != self.lastMaybeMove)
         return maybeMove != self.lastMaybeMove
 
+    #accepts an action and returns a point delta associated
+    def actionToDelta(self, action):
+        if(action == Action.UP):
+            return Point(0, -1)
+        elif action == Action.DOWN:
+            return Point(0, 1)
+        elif action == Action.RIGHT:
+            return Point(1, 0)
+        elif action == Action.LEFT:
+            return Point(-1, 0)
+        return Point(0,0)
 
-    #gets all possible pawn moves as absolute positions
+
+    #gets all possible pawn moves as action objects
     def getPawnMoves(self, space):
-        
+
         #print "getting pawn moves ", space
-        neighbors = [space]
-        for neighbor in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-            target = self.tupAdd(space, neighbor)
-            if self.getSpace(target) == -1:
+        moves = [space]
+        for action in [Point(0, 1), Point(0, -1)]:#, Point(1, 0), Point(-1, 0)]:
+            target = space + action
+            if self.isClear(target):
                 if self.canMoveTo(space, target):
-                    neighbors.append(target)
-                    
-            #if no direct move available, see if we can jump the pawn directly
-            elif self.getSpace(self.tupAdd(space, [2*x for x in neighbor])) == -1 and self.canMoveTo(target, self.tupAdd(space, [2*x for x in neighbor])):
-                neighbors.append(self.tupAdd(space, tuple(2*x for x in neighbor)))
+                    moves.append(target)
+            elif self.isClear(target+action) and self.canMoveTo(space, target) and self.canMoveTo(target, target+action):
+                moves.append(target+action)
+                """
             else: #now check diagonal jumps.
                 if neighbor[0] == 0:
                     diag = self.tupAdd(space, (1, neighbor[1]))
@@ -387,91 +415,71 @@ class Qoridor:
                     if self.getSpace(diag) == -1:
                         if self.canMoveTo(space, self.tupAdd(space, neighbor)) and self.canMoveTo(
                                 self.tupAdd(space, neighbor), diag):
-                            neighbors.append(diag)
-        return neighbors
+                            neighbors.append(diag)"""
+        return moves
 
     #determine if there's a wall at this intersection.  if offboard, returns no wall
+    #this really shouldn't need to exist as it is.
     def isWall(self, x, y):
         if x < 0 or x > 7 or y < 0 or y > 7:
             return 0
         else:
-            return self.intersections[x][y]
+            return self.state.intersections[x][y]
 
-    #determines if there is a wall in between two square locations
+    #determines if there is a wall in between two adjacent square locations
     def canMoveTo(self, start, end):
-        if end[0] >= self.getGridSize() or end[1] >= self.getGridSize():
-            return False            
-            
-        if start[0] == end[0]:
-            if(start[0] - 1 >= 0) and self.isWall(start[0] - 1, min(start[1], end[1])) == 2:
+        if end.X < 0 or end.X >= self.getGridSize() or end.Y < 0 or end.Y >= self.getGridSize():
+            return False
+        if (abs(end.X - start.X + end.Y-start.Y) != 1):
+            #provided cells are not adjacent.
+            return False
+
+        if start.X == end.X:
+            if(start.X - 1 >= 0) and self.isWall(start.X - 1, min(start.Y, end.Y)) == 2:
                 return False
-            if(start[0] <= 8 and self.isWall(start[0], min(start[1], end[1])) == 2):
+            if(start.X <= 8 and self.isWall(start.X, min(start.Y, end.Y)) == 2):
                 return False
         else:
-            if(start[1] - 1 >= 0) and self.isWall(min(start[0], end[0]), start[1] - 1) == 1:
+            if(start.Y - 1 >= 0) and self.isWall(min(start.X, end.X), start.Y - 1) == 1:
                 return False
-            if(start[1] <= 8 and self.isWall(min(start[0], end[0]), start[1]) == 1):
+            if(start.Y <= 8 and self.isWall(min(start.X, end.X), start.Y) == 1):
                 return False
         return True
 
-    #performs an action by specified agent.  absolute positions
+    #performs an action by specified agent
     def performAction(self, agent, action):
-
-        #if action[0] == 'p':
-        #    action = Action(Action.PAWN, action[1][0], action[1][2])
-        #elif action[1] == 'w':
-        #   action = Action(Action.WALL, action[1][0], action[1][2])
-
-
         if action.getType() == Action.PAWN:
             #print("moving")
-            self.movePawn(agent, (action.getPosition().X, action.getPosition().Y))
-            
+            #self.movePawn(agent, (action.getPosition().X, action.getPosition().Y))
             if agent == 0: # top
                 self.state.updateAgentPosition(BoardElement.AGENT_TOP, action.getPosition())
-                #return self.state.getPosition(BoardElement.AGENT_BOT).Y + \
-                #    action.getPosition().Y
-                
             elif agent == 1: # bot
                 self.state.updateAgentPosition(BoardElement.AGENT_BOT, action.getPosition())
-                #return (self.gridSize - self.state.getPosition(BoardElement.AGENT_TOP).Y) + \
-                #    (self.gridSize - action.getPosition().Y)
-                
+
         else:
-            self.wallCounts[agent] -= 1
             #print("placing a wall at ", action.getPosition())
-            
-            if action.getOrientation() == BoardElement.WALL_VERTICAL:
-                orientation = 1
-                #print("VERTICAL")
-            elif action.getOrientation() == BoardElement.WALL_HORIZONTAL:
-                orientation = 2
-                #print("HORIZONTAL")
-                
-            self.placeWall((action.getPosition().X, action.getPosition().Y), orientation)
-            
+
             self.state.addIntersection(action.getPosition(), action.getOrientation())
             if agent == 0: # top
                 self.state.removeWallCount(BoardElement.AGENT_TOP)
             elif agent == 1: # bot
                 self.state.removeWallCount(BoardElement.AGENT_BOT)
-                
-        
-        
-        
-        
-        topPathLength = AStar(self, self.state.getPosition(BoardElement.AGENT_TOP).toTuple(), lambda square : \
-                square[1] == self.gridSize-1, lambda square : abs(square[1] - self.gridSize-1))[2]
-        
-        botPathLength = AStar(self, self.state.getPosition(BoardElement.AGENT_BOT).toTuple(), lambda square : \
-                square[1] == 0, lambda square : abs(square[1]))[2]
-        
-        
+
+
+
+
+        topPathLength = AStar(self, self.state.getPosition(BoardElement.AGENT_TOP), lambda square : \
+                square.Y == self.gridSize-1, lambda square : abs(square.Y - self.gridSize-1))[2]
+
+        botPathLength = AStar(self, self.state.getPosition(BoardElement.AGENT_BOT), lambda square : \
+                square.Y == 0, lambda square : abs(square.Y))[2]
+
+
         if agent == 0: # top
             return 10*(botPathLength - topPathLength) - self.movesTaken
         else:
             return 10*(topPathLength - botPathLength) - self.movesTaken
-        
+
         '''
         if agent == 0: # top
             return 10*(botPathLength - topPathLength)\
@@ -480,8 +488,7 @@ class Qoridor:
             return 10*(topPathLength - botPathLength)\
                 + 4 * self.state.getWallCount(BoardElement.AGENT_BOT) - self.movesTaken
         '''
-        
-
+        #this should be fully functional
     def playerAction(self, agent, mousePosition):
         #determine location of mouse in board
         move = self.getMoveFromMousePos(agent, mousePosition)
@@ -491,6 +498,9 @@ class Qoridor:
         else:
             return False
 
+    #this needs some hefty work to fic up.
+    #low priority, focus on AI functions for now
+    #agent is one of BoardElement.AGENT_TOP or AGENT_BOTTOM
     def getMoveFromMousePos(self, agent, mousePosition):
         color = self.screen.get_at(mousePosition)
         if color != self.wallColor and color != self.squareColor :
@@ -532,6 +542,7 @@ class Qoridor:
 
 
     #moves a pawn from one square to the next
+    #DEPRECATED, should literally never be called anymore.
     def movePawn(self, agent, target):
         #print("movePawn()")
         #print(agent)
@@ -542,18 +553,19 @@ class Qoridor:
         self.spaces[target[0]][target[1]] = agent
         self.agents[agent] = target
 
-    #places a wall at given intersection with set orientation
-    def placeWall(self, location, orientation):
-        self.walls.append((location, orientation))
-        self.intersections[location[0]][location[1]] = orientation
+    #Use instead of addIntersection when only temporarily adding a wall
+    #in order to check legality of a move
+    def placeTempWall(self, location, orientation):
+        #self.walls.append((location, orientation))
+        self.state.intersections[location.X][location.Y] = orientation
 
     #returns a complete list of all legal moves given player can make
     #would be faster to return all walls, and then when they try a move, first check if it is valid.
-    def getLegalMoves(self, agent):
-        #first get legal pawn moves, designated by 'p' as first element.
-        moves = []
-        for item in self.getPawnMoves(self.agents[agent]):
-            moves.append(('p', (item [0], item[1])))
+    #this needs to _really_ be fixed
+    #DEPRECATED DO NOT USE
+    def getLegalActions(self, agent):
+        #first get legal pawn actions
+        moves = self.getPawnMoves(self.getAgentPosition(agent))
         if self.wallCounts[agent] > 0:
             for i in range(len(self.intersections)):
                 for j in range(len(self.intersections[i])):
@@ -572,41 +584,45 @@ class Qoridor:
                             self.removeWall((i, j))
         return moves
 
-    def removeWall(self, location):
-        self.walls.pop()
-        self.intersections[location[0]][location[1]] = 0
+    #swap to using gameState object
+    #used to undo temp placement for testing of validity
+    def removeTempWall(self, location):
+        #self.walls.pop()
+        self.state.intersections[location.X][location.Y] = 0
 
     #returns whether a certain move is legal. Takes absolutes
+    #TAG
     def isLegalMove(self, agent, move):
         #print("isLegalMove() move: ", move)
-        if move[0] == 'p':
-            legalMoves = self.getPawnMoves(self.agents[agent])
+        if move.getType() == Action.PAWN:
+            legalMoves = self.getPawnMoves(self.state.agentPositions[agent])
             for i in legalMoves:
                 #print("legalMoves: ", legalMoves)
-                if(i[0] == move[1][0] and i[1] == move[1][1]):
+                if(i == move.position):
                     return True
             return False
         else:
-            if(self.wallCounts[agent] == 0):
+            if(self.state.walls[agent] == 0):
                 return False
             #print("lol: ", self.intersections[move[1][0]][move[1][1]])
             #print("X: ", move[1][0])
             #print("Y: ", move[1][1])
             #print("intersection: ", self.intersections[move[1][0]][move[1][1]])
-            if(self.intersections[move[1][0]][move[1][1]]) != 0:
+            if(self.state.intersections[move.position.X][move.position.Y]) != 0:
                 return False
-            self.placeWall(move[1], move[2])
-            if not self.pathExists(self.agents[0], 8) or not self.pathExists(self.agents[1], 0):
-                self.removeWall(move[1])
+            self.placeTempWall(move.position, move.orientation)
+            if not self.pathExists(self.state.agentPositions[BoardElement.AGENT_TOP], 8) or not self.pathExists(self.state.agentPositions[BoardElement.AGENT_BOT], 0):
+                self.removeTempWall(move.position)
                 return False
-            self.removeWall(move[1])
-            if not self.isWall(move[1][0], move[1][1]):
-                if move[2] == 1 and not self.isWall(move[1][0], move[1][1] + 1) == 1 and not self.isWall(move[1][0], move[1][1] - 1) == 1:
+            self.removeTempWall(move.position)
+            if not self.isWall(move.position.X, move.position.Y):
+                if move.orientation == 1 and not self.isWall(move.position.X, move.position.Y + 1) == 1 and not self.isWall(move.position.X, move.position.Y - 1) == 1:
                     return True
-                if move[2] == 2 and not self.isWall(move[1][0] + 1, move[1][1]) == 2 and not self.isWall(move[1][0] - 1, move[1][1]) == 2:
+                if move.orientation == 2 and not self.isWall(move.position.X + 1, move.position.Y) == 2 and not self.isWall(move.position.X - 1, move.position.Y) == 2:
                     return True
         return False
 
     #edge is 0 or 8 to indicate which edge
+    #TAG probably
     def pathExists(self, space, edge):
-        return AStar(self, space, lambda square : square[1] == edge, lambda square : abs(square[1] - edge))[0] != -1
+        return AStar(self, space, lambda square : square.Y == edge, lambda square : abs(square.Y - edge))[0] != -1
