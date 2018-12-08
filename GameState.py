@@ -26,8 +26,8 @@ class GameState:
     def __init__(self, gridSize):
         self.gridSize = gridSize
         self.intersections = [[0 for x in range(gridSize-1)] for x in range(gridSize-1)]
-        topAgentPosition = Point(4,4)#Point(math.floor(gridSize/2), 0)
-        botAgentPosition = Point(4,5)#Point(math.floor(gridSize/2), gridSize-1)
+        topAgentPosition = Point(math.floor(gridSize/2), 0)
+        botAgentPosition = Point(math.floor(gridSize/2), gridSize-1)
 
         #use this now to get agent positions.
         self.agentPositions = {BoardElement.AGENT_TOP: topAgentPosition, BoardElement.AGENT_BOT: botAgentPosition}

@@ -387,7 +387,7 @@ class Qoridor:
 
         #print "getting pawn moves ", space
         moves = [space]
-        for action in [Point(0, 1), Point(0, -1)]:#, Point(1, 0), Point(-1, 0)]:
+        for action in [Point(0, 1), Point(0, -1), Point(1, 0), Point(-1, 0)]:
             target = space + action
             if self.isClear(target):
                 if self.canMoveTo(space, target):
