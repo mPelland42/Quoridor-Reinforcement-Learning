@@ -17,7 +17,7 @@ import random
 
 
 
-moveProbability = 0.97
+moveProbability = 0.90
 
 
 
@@ -174,10 +174,18 @@ class Agent:
                 if random.random() < moveProbability:
                     randomAction = random.randint(0, 3)
                 else:
-                    randomAction = random.randint(4, self.model.getNumActions() - 1)
+                    randomAction = random.randint(8, self.model.getNumActions() - 1)
                 
                 count += 1
-                if count > 1000:
+                if count > 100:
+                    # try the jumps
+                    for i in range(4):
+                        if not self.invalidMove(i + 4, agentType, self.game.getState()):
+                            print("an AI jumped!")
+                            return i + 4
+                    
+                    print("BUG")
+                    # if not, must be some weird bug, return None to avoid a catastrophe
                     return -1, None
                     
                 if not self.invalidMove(randomAction, agentType, self.game.getState()):

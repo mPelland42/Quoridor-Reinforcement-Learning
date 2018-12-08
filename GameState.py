@@ -28,7 +28,7 @@ class GameState:
         self.topAgentPosition = Point(math.floor(gridSize/2), 0)
         self.botAgentPosition = Point(math.floor(gridSize/2), gridSize-1)
         
-        self.walls = {BoardElement.AGENT_TOP: 10, BoardElement.AGENT_BOT: 10}
+        self.walls = {BoardElement.AGENT_TOP: 4, BoardElement.AGENT_BOT: 4}
         self.movesTaken = 0
         
         self.winner = None

@@ -51,6 +51,7 @@ class Qoridor:
         self.reset()
         
         self.localAvgGameLength = 0
+        self.games = 0
         self.randomActions = True
         
 
@@ -85,8 +86,8 @@ class Qoridor:
         
         self.state = GameState(self.gridSize)
         
-        self.spaces = [[-1 for x in range(9)] for x in range(9)]
-        self.intersections = [[0 for x in range(8)] for x in range(8)]
+        self.spaces = [[-1 for x in range(self.gridSize)] for x in range(self.gridSize)]
+        self.intersections = [[0 for x in range(self.gridSize-1)] for x in range(self.gridSize-1)]
         self.agents = [(4, 0), (4, 8)]
         
         for i in range(len(self.agents)):
@@ -143,14 +144,14 @@ class Qoridor:
                 
                             
                 if not firstMove:
-                    if self.movesTaken > 200:
+                    if self.movesTaken > 150:
                         done = True
                     else:
                         if self.state.getWinner() == None:
                             self.memory.addSample((previousState, previousAction, reward, state))
                         else:
-                            self.memory.addSample((state, actionIndex, reward + 200, None))
-                            self.memory.addSample((previousState, previousAction, reward - 200, state))
+                            self.memory.addSample((state, actionIndex, reward + 150, None))
+                            self.memory.addSample((previousState, previousAction, reward -150, state))
                             done = True
                     agent.learn()
                 else:
@@ -205,22 +206,29 @@ class Qoridor:
         #print("sleeping for ", self.gameSpeed)
         #time.sleep(self.gameSpeed) # so we can see wtf is going on
                 
-        # either agent can call learn()
         # since they use the same model
         self.movesTillVictory.append(self.movesTaken)
+        self.games += 1
         print(" ", self.movesTaken)
         self.localAvgGameLength += self.movesTaken
 
+        self.displayGame = False
+        self.gameSpeed = 0
+        self.randomActions = True
+        
+        if self.epsilon < 0.40 and self.games % 10 == 0:
+            print("Displaying one game..")
+            self.displayGame = True
+            self.gameSpeed = 0.2
+            self.randomActions = False
+            
     def printDetails(self):
         print("Epsilon: "+"{:.6f}".format(self.epsilon))
         print("Memory Used: ", self.memory.getTotalMem())
         self.localAvgGameLength = self.localAvgGameLength / 10
         print("Local Average Game Length: ", self.localAvgGameLength)
         
-        if self.epsilon < 0.45:
-            self.displayGame = True
-            self.gameSpeed = 0.5
-            self.randomActions = False
+
         self.localAvgGameLength = 0
         print("Moves taken: ")
         
@@ -268,7 +276,7 @@ class Qoridor:
 
     #returns winner if game is over, else returns -1
     def endGame(self):
-        if self.agents[0][1] == 8:
+        if self.agents[0][1] == self.gridSize-1:
             return 0
         elif self.agents[1][1] == 0:
             return 1
@@ -280,11 +288,11 @@ class Qoridor:
         neighbors = []
         if space[0] > 0:
             neighbors.append((space[0] - 1, space[1]))
-        if space[0] < 8:
+        if space[0] < self.gridSize-1:
             neighbors.append((space[0] + 1, space[1]))
         if space[1] > 0:
             neighbors.append((space[0], space[1] - 1))
-        if space[1] < 8:
+        if space[1] < self.gridSize-1:
             neighbors.append((space[0], space[1] + 1))
         return neighbors
 
@@ -293,10 +301,10 @@ class Qoridor:
 
         #needs to be edited to only display changes.
 
-        boxSize = int(self.screen.get_width()/9)
-        shift = int((self.screen.get_width() - boxSize*9)/2)
-        for i in range(9):
-            for j in range(9):
+        boxSize = int(self.screen.get_width()/self.gridSize)
+        shift = int((self.screen.get_width() - boxSize*self.gridSize)/2)
+        for i in range(self.gridSize):
+            for j in range(self.gridSize):
                 pygame.draw.rect(self.screen, self.squareColor, [i*boxSize + shift, j*boxSize + shift, boxSize, boxSize], 10)
         for i in range(len(self.agents)):
             pygame.draw.circle(self.screen, self.agentColors[i], (int(self.agents[i][0] * boxSize + boxSize/2 + shift), int(self.agents[i][1] * boxSize + boxSize/2 + shift)), int(boxSize * .25))
@@ -328,7 +336,7 @@ class Qoridor:
 
     #gets value of a space, returns 7 if out of bounds
     def getSpace(self, space):
-        if space[0] >= 0 and space[0] <= 8 and space[1] >= 0 and space[1] <= 8:
+        if space[0] >= 0 and space[0] <= self.gridSize-1 and space[1] >= 0 and space[1] <= self.gridSize-1:
             return self.spaces[space[0]][space[1]]
         else:
             return 7;
@@ -382,7 +390,7 @@ class Qoridor:
 
     #determine if there's a wall at this intersection.  if offboard, returns no wall
     def isWall(self, x, y):
-        if x < 0 or x > 7 or y < 0 or y > 7:
+        if x < 0 or x > self.gridSize-2 or y < 0 or y > self.gridSize-2:
             return 0
         else:
             return self.intersections[x][y]
@@ -395,12 +403,12 @@ class Qoridor:
         if start[0] == end[0]:
             if(start[0] - 1 >= 0) and self.isWall(start[0] - 1, min(start[1], end[1])) == 2:
                 return False
-            if(start[0] <= 8 and self.isWall(start[0], min(start[1], end[1])) == 2):
+            if(start[0] <= self.gridSize-1 and self.isWall(start[0], min(start[1], end[1])) == 2):
                 return False
         else:
             if(start[1] - 1 >= 0) and self.isWall(min(start[0], end[0]), start[1] - 1) == 1:
                 return False
-            if(start[1] <= 8 and self.isWall(min(start[0], end[0]), start[1]) == 1):
+            if(start[1] <= self.gridSize-1 and self.isWall(min(start[0], end[0]), start[1]) == 1):
                 return False
         return True
 
@@ -458,18 +466,26 @@ class Qoridor:
         
         
         if agent == 0: # top
-            return 10*(botPathLength - topPathLength) - self.movesTaken
+            #if self.displayGame: print("returning ", 10*(botPathLength - topPathLength)\
+            #    + 2 * self.state.getWallCount(BoardElement.AGENT_TOP) - self.movesTaken)
+            #print("top:")
+            #print(self.state)
+            #print("TPL: ",topPathLength)
+            #print("BPL: ", botPathLength)
+            #print("WC: ", self.state.getWallCount(BoardElement.AGENT_TOP))
+            #print("MOVES TAKEN: ", self.movesTaken)
+            
+            #time.sleep(100)
+            return 8*(botPathLength - topPathLength)- self.movesTaken
+            #return 15*(botPathLength - topPathLength)\
+            #    + 3 * self.state.getWallCount(BoardElement.AGENT_TOP) - self.movesTaken
         else:
-            return 10*(topPathLength - botPathLength) - self.movesTaken
-        
-        '''
-        if agent == 0: # top
-            return 10*(botPathLength - topPathLength)\
-                + 4 * self.state.getWallCount(BoardElement.AGENT_TOP) - self.movesTaken
-        else:
-            return 10*(topPathLength - botPathLength)\
-                + 4 * self.state.getWallCount(BoardElement.AGENT_BOT) - self.movesTaken
-        '''
+            #if self.displayGame: print("returning ", 10*(topPathLength - botPathLength)\
+            #    + 2 * self.state.getWallCount(BoardElement.AGENT_BOT) - self.movesTaken)
+            return 8*(topPathLength - botPathLength)- self.movesTaken
+            #return 10*(topPathLength - botPathLength)\
+            #    + 3 * self.state.getWallCount(BoardElement.AGENT_BOT) - self.movesTaken
+
         
 
     def playerAction(self, agent, mousePosition):
@@ -484,8 +500,8 @@ class Qoridor:
     def getMoveFromMousePos(self, agent, mousePosition):
         color = self.screen.get_at(mousePosition)
         if color != self.wallColor and color != self.squareColor :
-            xCoord = int(mousePosition[0] * 9 / self.screen.get_width())
-            yCoord = int(mousePosition[1]*9 / self.screen.get_height())
+            xCoord = int(mousePosition[0] * (self.gridSize) / self.screen.get_width())
+            yCoord = int(mousePosition[1] * (self.gridSize) / self.screen.get_height())
             if xCoord < 0:
                 xCoord = 0
             if yCoord < 0:
@@ -496,24 +512,24 @@ class Qoridor:
                 yCoord = 8
             return ('p', (xCoord, yCoord))
         else:
-            boxSize = self.screen.get_width() / 9;
-            xCoord = int((mousePosition[0] - boxSize / 2) * 9 / self.screen.get_width())
-            yCoord = int((mousePosition[1] - boxSize / 2) * 9 / self.screen.get_height())
+            boxSize = self.screen.get_width() / (self.gridSize);
+            xCoord = int((mousePosition[0] - boxSize / 2) * (self.gridSize) / self.screen.get_width())
+            yCoord = int((mousePosition[1] - boxSize / 2) * (self.gridSize) / self.screen.get_height())
             if xCoord < 0:
                 xCoord = 0
             if yCoord < 0:
                 yCoord = 0
-            if xCoord > 7:
-                xCoord = 7
-            if yCoord > 7:
-                yCoord = 7
+            if xCoord > (self.gridSize-2):
+                xCoord = (self.gridSize-2)
+            if yCoord > (self.gridSize-2):
+                yCoord = (self.gridSize-2)
 
             # determine orientation
             # check if valid
             # GO GO GO GO GO
 
             # determine location of target intersection
-            actualLocation = ((xCoord + 1) * self.screen.get_width() / 9, (yCoord + 1) * self.screen.get_width() / 9);
+            actualLocation = ((xCoord + 1) * self.screen.get_width() / (self.gridSize), (yCoord + 1) * self.screen.get_width() / (self.gridSize));
             if (abs(mousePosition[0] - actualLocation[0]) > abs(mousePosition[1] - actualLocation[1])):
                 orientation = 2
             else:
@@ -551,13 +567,13 @@ class Qoridor:
                         if not self.isWall(i, j + 1) == 1 and not self.isWall(i, j - 1) == 1:
                             #ensure that there is still a possible path
                             self.placeWall((i, j), 1)
-                            if self.pathExists(self.agents[0], 8) and self.pathExists(self.agents[1], 0):
+                            if self.pathExists(self.agents[0], self.gridSize-1) and self.pathExists(self.agents[1], 0):
                                 moves.append(('w', (i, j), 1))
                             self.removeWall((i, j))
                         if not self.isWall(i + 1, j) == 2 and not self.isWall(i - 1, j) == 2:
                             #ensure that there will still be a possible path
                             self.placeWall((i, j), 2)
-                            if self.pathExists(self.agents[0], 8) and self.pathExists(self.agents[1], 0):
+                            if self.pathExists(self.agents[0], self.gridSize-1) and self.pathExists(self.agents[1], 0):
                                 moves.append(('w', (i, j), 2))
                             self.removeWall((i, j))
         return moves
@@ -586,7 +602,7 @@ class Qoridor:
             if(self.intersections[move[1][0]][move[1][1]]) != 0:
                 return False
             self.placeWall(move[1], move[2])
-            if not self.pathExists(self.agents[0], 8) or not self.pathExists(self.agents[1], 0):
+            if not self.pathExists(self.agents[0], self.gridSize-1) or not self.pathExists(self.agents[1], 0):
                 self.removeWall(move[1])
                 return False
             self.removeWall(move[1])

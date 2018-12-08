@@ -15,12 +15,12 @@ humanPlaying = False
 
 
 MEMORY = 200000
-NUM_EPISODES = 500
-BATCH_SIZE = 50
+NUM_EPISODES = 1000
+BATCH_SIZE = 500
  #max decay, min decay
 MAX_EPSILON = 1.0
 MIN_EPSILON = 0.0
-LAMBDA = 0.00010 # decay
+LAMBDA = 0.000027 # decay
 
 
 
