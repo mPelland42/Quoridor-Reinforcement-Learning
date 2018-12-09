@@ -52,11 +52,16 @@ class Qoridor:
         self.currentlyDrawing = startWithDrawing
         self.learning = not humanPlaying
         
-        
-        
+        if self.currentlyDrawing and self.gameSpeed == self.gameSpeedSlow:
+            self.printStuff = True
+        else:
+            self.printStuff = False
+                        
         print("Learning: ", self.learning)
         print("drawing: ", self.currentlyDrawing)
         print("game speed: ", self.gameSpeed)
+        print("printing: ", self.printStuff)
+    
         
         # reset game state
         self.reset()
