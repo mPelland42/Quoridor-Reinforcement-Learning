@@ -16,11 +16,11 @@ startWithDrawing = False
 
 MEMORY = 200000
 NUM_EPISODES = 1000
-BATCH_SIZE = 100
+BATCH_SIZE = 500
  #max decay, min decay
 MAX_EPSILON = 1.0
 MIN_EPSILON = 0.0
-LAMBDA = 0.0001 # decay
+LAMBDA = 0.00005 # decay
 
 
 

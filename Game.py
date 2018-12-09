@@ -158,8 +158,8 @@ class Qoridor:
                         if self.state.getWinner() == None:
                             self.memory.addSample((previousState, previousAction, reward, state))
                         else:
-                            self.memory.addSample((state, actionIndex, reward + 3, None))
-                            self.memory.addSample((previousState, previousAction, reward, state))
+                            self.memory.addSample((state, actionIndex, reward + 5, None))
+                            self.memory.addSample((previousState, previousAction, reward-5, state))
                             done = True
                         agent.learn()
                     else:

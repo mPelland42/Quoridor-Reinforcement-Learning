@@ -18,7 +18,7 @@ import random
 
 
 
-moveProbability = 0.90
+
 
 
 
@@ -34,8 +34,9 @@ class Action:
     JUMP_DOWN = "JDOWN"
     JUMP_LEFT = "JLEFT"
     JUMP_RIGHT = "JRIGHT"
-    #STAY = "STAY"
     
+    PAWN_MOVES = 8
+    PAWN_MOVE_PROBABILITY = 0.70
     
     def __init__(self, actionType, direction = None, orientation = None, position = None):
             self.actionType = actionType
@@ -58,12 +59,12 @@ class Action:
         allActions.append(Action(Action.PAWN, Action.JUMP_RIGHT))
         #allActions.append(Action(Action.PAWN, Action.STAY))
         
-        '''
+        
         for x in range(gridSize - 1):
             for y in range(gridSize - 1):
                 allActions.append(Action(Action.WALL, None, BoardElement.WALL_HORIZONTAL, Point(x, y)))
                 allActions.append(Action(Action.WALL, None, BoardElement.WALL_VERTICAL, Point(x, y)))
-        '''
+        
         return allActions
         
         
@@ -159,17 +160,21 @@ class Agent:
         
         # exclude illegal moves for now
         # might need to implement a negative reward for them if performance sucks
-        
+        if random.random() < Action.PAWN_MOVE_PROBABILITY:
+            moveSize = Action.PAWN_MOVES
+        else:
+            moveSize = self.actionSize-1
+            
         
         if self.game.getLearning() and (random.random() < epsilon):
             
             actionsTried = []
-            randomAction = random.randint(0, 7)
+            randomAction = random.randint(0, moveSize)
             
             while self.invalidMove(randomAction, agentType, self.game.getState()):
                 actionsTried.append(randomAction)
                 while True:
-                    randomAction = random.randint(0, 7)
+                    randomAction = random.randint(0, moveSize)
                     if randomAction not in actionsTried:
                         break
                         
