@@ -23,7 +23,7 @@ class BoardElement():
     OFF_GRID = 6
 
 class GameState:
-    def __init__(self, gridSize):
+    def __init__(self, gridSize, numWalls):
         self.gridSize = gridSize
         self.fullGridSize = 2 * gridSize - 1
         self.grid = [[0 for x in range(self.fullGridSize)] for x in range(self.fullGridSize)]
@@ -39,7 +39,7 @@ class GameState:
         #use this now to get agent positions.
         self.agentPositions = {BoardElement.AGENT_TOP: topAgentPosition, BoardElement.AGENT_BOT: botAgentPosition}
 
-        self.walls = {BoardElement.AGENT_TOP: 10, BoardElement.AGENT_BOT: 10}
+        self.walls = {BoardElement.AGENT_TOP: numWalls, BoardElement.AGENT_BOT: numWalls}
         self.movesTaken = 0
         self.wallPositions = []
 
@@ -137,8 +137,8 @@ class GameState:
     def asVector(self, agentType):
         v = []
         if agentType == BoardElement.AGENT_TOP:
-            for x in reversed(range(self.fullGridSize)):
-                for y in range(self.fullGridSize):
+            for y in range(self.fullGridSize):
+                for x in reversed(range(self.fullGridSize)):
                     # self is 2, enemy is 3
                     if self.grid[x][y] == BoardElement.AGENT_TOP:
                         v.append(2)
@@ -157,8 +157,8 @@ class GameState:
 
 
         elif agentType == BoardElement.AGENT_BOT:
-            for x in range(len(self.grid)):
-                for y in reversed(range(len(self.grid[x]))):
+            for y in reversed(range(self.fullGridSize)):
+                for x in range(self.fullGridSize):
                     if self.grid[x][y] == BoardElement.AGENT_BOT:
                         v.append(2)
                     elif self.grid[x][y] == BoardElement.AGENT_TOP:

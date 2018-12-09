@@ -30,12 +30,16 @@ class Action:
     DOWN = "DOWN"
     LEFT = "LEFT"
     RIGHT = "RIGHT"
-    JUMP_UP = "JUP"
-    JUMP_DOWN = "JDOWN"
-    JUMP_LEFT = "JLEFT"
-    JUMP_RIGHT = "JRIGHT"
+    JUMP_UP = "JUMP UP"
+    JUMP_DOWN = "JUMP DOWN"
+    JUMP_LEFT = "JUMP LEFT"
+    JUMP_RIGHT = "JUMP RIGHT"
     
     PAWN_MOVES = 8
+    INVALID_PENALTY = -2
+    MOVE_PROBABILITY = .90
+    GAMMA = 0.5
+    greedy = True
     
     def __init__(self, actionType, direction = None, orientation = None, position = None):
             self.actionType = actionType
@@ -136,8 +140,21 @@ class Agent:
         self.allActions = Action.makeAllActions(gridSize)
         self.actionSize = len(self.allActions)
         
+        self.loss = 0
+        self.recentLoss = 0
+        
 
 
+    def getLoss(self):
+        tmp = self.loss
+        self.recentLoss += tmp
+        self.loss = 0
+        return tmp
+    
+    def getRecentLoss(self):
+        tmp = self.recentLoss
+        self.recentLoss = 0
+        return tmp
 
         
     def getType(self):
@@ -159,7 +176,7 @@ class Agent:
         
         # exclude illegal moves for now
         # might need to implement a negative reward for them if performance sucks
-        if random.random() < epsilon:
+        if random.random() < Action.MOVE_PROBABILITY:
             moveSize = Action.PAWN_MOVES
         else:
             moveSize = self.actionSize-1
@@ -171,6 +188,7 @@ class Agent:
             randomAction = random.randint(0, moveSize)
             
             while self.invalidMove(randomAction, agentType, self.game.getState()):
+                self.memory.addSample((currentStateVector, randomAction, Action.INVALID_PENALTY, None))
                 actionsTried.append(randomAction)
                 while True:
                     randomAction = random.randint(0, moveSize)
@@ -186,13 +204,24 @@ class Agent:
             q = self.sess.run(tf.nn.softmax(q))
             
             values, indices = self.sess.run(tf.nn.top_k(q, len(q)))
+            
             values = values.tolist()
             indices = indices.tolist()
+            
+            if self.game.printQ:
+                self.game.printQ = False
+                print(agentType)
+                print(currentStateVector)
+                for i in indices:
+                    print(self.allActions[i])
+                    print(q[i])
+            
+            
             
             action = self.sample(values)
             
             while self.invalidMove(indices[action], agentType, self.game.getState()):
-                #print("action: ",action)
+                self.memory.addSample((currentStateVector, action, Action.INVALID_PENALTY, None))
                 del values[action]
                 del indices[action]
                 
@@ -208,9 +237,12 @@ class Agent:
     def sample(self, distribution):
         if sum(distribution) != 1:
             distribution = self.normalize(distribution)
+        if float(sum(distribution)) == 0:
+            return random.randint(0, len(distribution)-1)
+        
         choice = random.random()
         i, total= 0, distribution[0]
-        while choice > total:
+        while choice >= total:
             i += 1
             total += distribution[i]
         return i
@@ -281,6 +313,8 @@ class Agent:
         action.updatePosition(position)
         return action
 
+
+
     def learn(self):
         batch = self.memory.sample(self.model.getBatchSize())
         
@@ -309,10 +343,12 @@ class Agent:
                 # prediction possible
                 current_q[action] = reward
             else:
-                current_q[action] = reward + 0.9 * np.amax(q_s_a_d[i])
+                current_q[action] = reward + Action.GAMMA * np.amax(q_s_a_d[i])
             x[i] = state
             y[i] = current_q
-        self.model.trainBatch(self.sess, x, y)
+            
+        _, l = self.model.trainBatch(self.sess, x, y)
+        self.loss += int(l)
         
         
 class TopAgent(Agent):

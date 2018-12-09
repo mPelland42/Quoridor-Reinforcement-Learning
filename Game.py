@@ -30,7 +30,7 @@ SCREEN_HEIGHT = 400
 
 
 class Qoridor:
-    def __init__(self, gridSize, gameSpeedSlow, startWithDrawing, humanPlaying):
+    def __init__(self, gridSize, numWalls, gameSpeedSlow, startWithDrawing, humanPlaying):
 
         # game colors for display
         self.agentColors = [(230, 46, 0), (0, 0, 255)] #red & purple
@@ -39,6 +39,7 @@ class Qoridor:
 
         # flags
         self.gridSize = gridSize
+        self.numWalls = numWalls
         self.gameSpeedSlow = gameSpeedSlow
         self.gameSpeed = 0
         self.humanPlaying = humanPlaying
@@ -53,6 +54,7 @@ class Qoridor:
         self.learning = not humanPlaying
         
         self.printStuff = False
+        self.printQ = False
                         
         print("Learning: ", self.learning)
         print("drawing: ", self.currentlyDrawing)
@@ -94,7 +96,7 @@ class Qoridor:
 
         self.movesTaken = 0
 
-        self.state = GameState(self.gridSize)
+        self.state = GameState(self.gridSize, self.numWalls)
         
         # also reset the visuals
         if self.currentlyDrawing or self.initialDraw:
@@ -163,8 +165,8 @@ class Qoridor:
                         if self.state.getWinner() == None:
                             self.memory.addSample((previousState, previousAction, reward, state))
                         else:
-                            self.memory.addSample((state, actionIndex, reward + 50, None))
-                            self.memory.addSample((previousState, previousAction, reward - 50, state))
+                            self.memory.addSample((state, actionIndex, reward + 2, None))
+                            self.memory.addSample((previousState, previousAction, reward - 2, state))
                             done = True
                         agent.learn()
                     else:
@@ -221,6 +223,9 @@ class Qoridor:
                     elif event.key == pygame.K_p:
                         self.printStuff = not self.printStuff
                         print("printing: ", self.printStuff)
+                        
+                    elif event.key == pygame.K_q:
+                        self.printQ = True
                 '''
                 if event.type == pygame.MOUSEBUTTONDOWN and agents[currentAgent] == HUMAN:
                     if self.playerAction(currentAgent, pygame.mouse.get_pos()):
@@ -250,7 +255,7 @@ class Qoridor:
         # since they use the same model
         self.movesTillVictory.append(self.movesTaken)
         self.games += 1
-        print(" ", self.movesTaken)
+        print(" ", self.movesTaken, agent.getLoss())
         self.localAvgGameLength += self.movesTaken
 
 
@@ -265,7 +270,7 @@ class Qoridor:
                 square.Y == 0, lambda square : abs(square.Y))[2]
 
         if action.getType() == Action.WALL:
-            multiplier = 3
+            multiplier = 2
         else:
             multiplier = 1
         
@@ -273,34 +278,36 @@ class Qoridor:
         if agentType == BoardElement.AGENT_TOP:
             
             if botPathLength > previousBotPathLength:
-                return 5 * multiplier
+                return 1
             if topPathLength < previousTopPathLength:
-                return 5 * multiplier
+                return 1
             
             
         elif agentType == BoardElement.AGENT_BOT:
 
             if topPathLength > previousTopPathLength:
-                return 5 * multiplier
+                return 1
             if botPathLength < previousBotPathLength:
-                return 5 * multiplier
+                return 1
             
 
         # if this move acomplished neither, then return penalty
-        return -5 * multiplier
+        return (-1 * multiplier) + self.state.getWallCount(agentType)/3
 
             
     def getLearning(self):
         return self.learning
     
     def printDetails(self):
-        print("Epsilon: "+"{:.6f}".format(self.epsilon))
-        print("Memory Used: ", self.memory.getTotalMem())
         self.localAvgGameLength = self.localAvgGameLength / 10
         print("Local Average Game Length: ", self.localAvgGameLength)
+        print("Local Average Loss: ", self.agents[0].getRecentLoss())
+        
+        print("Epsilon: "+"{:.6f}".format(self.epsilon))
+        print("Memory Used: ", self.memory.getTotalMem())
 
         self.localAvgGameLength = 0
-        print("Moves taken: ")
+        print("\nMoves/loss: ")
 
 
 
