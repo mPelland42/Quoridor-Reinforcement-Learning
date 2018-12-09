@@ -307,6 +307,7 @@ class Agent:
 class TopAgent(Agent):
     def __init__(self, game, sess, model, memory):
         Agent.__init__(self, game, BoardElement.AGENT_TOP, sess, model, memory)
+        self.goal = self.game.getGridSize() - 1
 
 
 
@@ -321,7 +322,9 @@ class TopAgent(Agent):
 class BottomAgent(Agent):
     def __init__(self, game, sess, model, memory):
         Agent.__init__(self, game, BoardElement.AGENT_BOT, sess, model, memory)
-
+        self.goal  = 0
+        
+        
     def move(self, epsilon):
         actionTuple = Agent.move(self, BoardElement.AGENT_BOT, self.game.getState().asVector(BoardElement.AGENT_BOT), epsilon)
         

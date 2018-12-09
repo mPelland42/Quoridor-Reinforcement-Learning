@@ -159,7 +159,7 @@ class Qoridor:
                             self.memory.addSample((previousState, previousAction, reward, state))
                         else:
                             self.memory.addSample((state, actionIndex, reward + 5, None))
-                            self.memory.addSample((previousState, previousAction, reward-5, state))
+                            self.memory.addSample((previousState, previousAction, reward - 5, state))
                             done = True
                         agent.learn()
                     else:
@@ -208,6 +208,10 @@ class Qoridor:
                         self.learning = not self.learning
                         print ("learning: ", self.learning)
                         
+                        
+                    elif event.key == pygame.K_s:
+                        print("save functionality of the model has not been implemented yet")
+                        
                 '''
                 if event.type == pygame.MOUSEBUTTONDOWN and agents[currentAgent] == HUMAN:
                     if self.playerAction(currentAgent, pygame.mouse.get_pos()):
@@ -243,7 +247,7 @@ class Qoridor:
 
         
         
-    def reward(self, agentType):
+    def reward(self, agentType, previousTopPathLength, previousBotPathLength):
         
         topPathLength = AStar(self, self.state.getPosition(BoardElement.AGENT_TOP), lambda square : \
                 square.Y == self.gridSize-1, lambda square : abs(square.Y - self.gridSize-1))[2]
@@ -251,37 +255,27 @@ class Qoridor:
         botPathLength = AStar(self, self.state.getPosition(BoardElement.AGENT_BOT), lambda square : \
                 square.Y == 0, lambda square : abs(square.Y))[2]
 
-
-
+        
+        # give reward if enemy path is longer or my path is shorter
         if agentType == BoardElement.AGENT_TOP:
             
-            #if self.displayGame: print("returning ", 10*(botPathLength - topPathLength)\
-            #    + 2 * self.state.getWallCount(BoardElement.AGENT_TOP) - self.movesTaken)
-            #return 15*(botPathLength - topPathLength)\
-            #    + 3 * self.state.getWallCount(BoardElement.AGENT_TOP) - self.movesTaken
+            if botPathLength > previousBotPathLength:
+                return 5
+            if topPathLength < previousTopPathLength:
+                return 5
             
-            return -topPathLength
-            #return (botPathLength - topPathLength)
             
         elif agentType == BoardElement.AGENT_BOT:
-            #if self.displayGame: print("returning ", 10*(topPathLength - botPathLength)\
-            #    + 2 * self.state.getWallCount(BoardElement.AGENT_BOT) - self.movesTaken)
-            #return 10*(topPathLength - botPathLength)\
-            #    + 3 * self.state.getWallCount(BoardElement.AGENT_BOT) - self.movesTaken
+
+            if topPathLength > previousTopPathLength:
+                return 5
+            if botPathLength < previousBotPathLength:
+                return 5
             
-            #return (topPathLength - botPathLength)
-            return -botPathLength
-            
-            '''
-            print("top:")
-            print(self.state)
-            print("TPL: ",topPathLength)
-            print("BPL: ", botPathLength)
-            print("WC: ", self.state.getWallCount(BoardElement.AGENT_TOP))
-            print("MOVES TAKEN: ", self.movesTaken)
-            '''
-            
-            
+
+        # if this move acomplished neither, then return penalty
+        return -5
+
             
     def getLearning(self):
         return self.learning
@@ -522,6 +516,13 @@ class Qoridor:
 
     #performs an action by specified agent
     def performAction(self, agentType, action):
+        
+        topPathLength = AStar(self, self.state.getPosition(BoardElement.AGENT_TOP), lambda square : \
+                square.Y == self.gridSize-1, lambda square : abs(square.Y - self.gridSize-1))[2]
+
+        botPathLength = AStar(self, self.state.getPosition(BoardElement.AGENT_BOT), lambda square : \
+                square.Y == 0, lambda square : abs(square.Y))[2]
+        
         if action.getType() == Action.PAWN:
             
             if agentType == BoardElement.AGENT_TOP:
@@ -539,7 +540,7 @@ class Qoridor:
                 self.state.removeWallCount(BoardElement.AGENT_BOT)
                 
             
-        return self.reward(agentType)
+        return self.reward(agentType, topPathLength, botPathLength)
 
     
 

@@ -96,7 +96,8 @@ class GameState:
             # my walls, then enemy walls
             v.append(self.walls[BoardElement.AGENT_TOP])
             v.append(self.walls[BoardElement.AGENT_BOT])
-            v.append(self.movesTaken)
+            # i've taken out self.movesTaken for now
+            #v.append(self.movesTaken)
 
 
 
@@ -117,7 +118,7 @@ class GameState:
             # my walls, then enemy walls
             v.append(self.walls[BoardElement.AGENT_BOT])
             v.append(self.walls[BoardElement.AGENT_TOP])
-            v.append(self.movesTaken)
+            #v.append(self.movesTaken)
 
 
         return np.array(v)
