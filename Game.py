@@ -52,10 +52,7 @@ class Qoridor:
         self.currentlyDrawing = startWithDrawing
         self.learning = not humanPlaying
         
-        if self.currentlyDrawing and self.gameSpeed == self.gameSpeedSlow:
-            self.printStuff = True
-        else:
-            self.printStuff = False
+        self.printStuff = False
                         
         print("Learning: ", self.learning)
         print("drawing: ", self.currentlyDrawing)
@@ -220,11 +217,10 @@ class Qoridor:
                     elif event.key == pygame.K_s:
                         print("save functionality of the model has not been implemented yet")
                         
-                    if self.currentlyDrawing and self.gameSpeed == self.gameSpeedSlow:
-                        self.printStuff = True
-                    else:
-                        self.printStuff = False
                         
+                    elif event.key == pygame.K_p:
+                        self.printStuff = not self.printStuff
+                        print("printing: ", self.printStuff)
                 '''
                 if event.type == pygame.MOUSEBUTTONDOWN and agents[currentAgent] == HUMAN:
                     if self.playerAction(currentAgent, pygame.mouse.get_pos()):
