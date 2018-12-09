@@ -30,7 +30,7 @@ SCREEN_HEIGHT = 400
 
 
 class Qoridor:
-    def __init__(self, gridSize, gameSpeed, humanPlaying):
+    def __init__(self, gridSize, gameSpeedSlow, startWithDrawing, humanPlaying):
 
         # game colors for display
         self.agentColors = [(230, 46, 0), (0, 0, 255)] #red & purple
@@ -39,7 +39,8 @@ class Qoridor:
 
         # flags
         self.gridSize = gridSize
-        self.gameSpeed = gameSpeed
+        self.gameSpeedSlow = gameSpeedSlow
+        self.gameSpeed = gameSpeedSlow
         self.humanPlaying = humanPlaying
 
 
@@ -48,8 +49,14 @@ class Qoridor:
         self.movesTillVictory = []
 
         self.initialDraw = True
-        self.currentlyDrawing = False
-        self.randomActions = not humanPlaying
+        self.currentlyDrawing = startWithDrawing
+        self.learning = not humanPlaying
+        
+        
+        
+        print("Learning: ", self.learning)
+        print("drawing: ", self.currentlyDrawing)
+        print("game speed: ", self.gameSpeed)
         
         # reset game state
         self.reset()
@@ -94,7 +101,8 @@ class Qoridor:
             self.draw(0, (0, 0))
             pygame.display.flip()
             pygame.display.update()
-        # reset agents
+            self.initialDraw = False
+            
 
 
     def run(self):
@@ -114,48 +122,60 @@ class Qoridor:
         while not done:
             #pygame handling
             
-            drawn = False
+            #drawn = False
             if not self.humanPlaying:
                 #print ("\n============================================")
 
                 agent = self.agents[currentAgent]
                 agentType = agent.getType()
 
+                state = self.state.asVector(agentType)
+                
+                #if agentType == BoardElement.AGENT_TOP:
+                #    print("agent top")
+                #if agentType == BoardElement.AGENT_BOT:
+                #    print("agent bot")
+                
+
                 actionIndex, action = agent.move(self.epsilon)
                 self.movesTaken += 1
 
-                state = self.state.asVector(agentType)
                 if action is None:
+                    print("No Action!")
                     done = True
                     break
                 else:
                     reward = self.performAction(agentType, action)
                 #newState = self.state.asVector(agentType)
 
-
-
-                if not firstMove:
-                    #if self.movesTaken > 150:
-                        #done = True
-                    #else:
-                    if self.state.getWinner() == None:
-                        self.memory.addSample((previousState, previousAction, reward, state))
+                #print("reward: ", reward)
+                #print(" ")
+                if self.learning:
+                    if not firstMove:
+                        #if self.movesTaken > 150:
+                            #done = True
+                        #else:
+                        if self.state.getWinner() == None:
+                            self.memory.addSample((previousState, previousAction, reward, state))
+                        else:
+                            self.memory.addSample((state, actionIndex, reward + 3, None))
+                            self.memory.addSample((previousState, previousAction, reward, state))
+                            done = True
+                        agent.learn()
                     else:
-                        self.memory.addSample((state, actionIndex, reward + 3, None))
-                        self.memory.addSample((previousState, previousAction, reward -3, state))
-                        done = True
-                    agent.learn()
-                else:
-                    firstMove = False
+                        firstMove = False
+                        
+                    self.steps += 1
+                    self.epsilon = self.MIN_EPSILON + (self.MAX_EPSILON - self.MIN_EPSILON) \
+                        * math.exp(-self.LAMBDA * self.steps)
+
+                if not self.state.getWinner() == None:
+                    done = True
 
                 previousState = state
                 previousAction = actionIndex
-
                 currentAgent = (currentAgent + 1) % 2
-
-                self.steps += 1
-                self.epsilon = self.MIN_EPSILON + (self.MAX_EPSILON - self.MIN_EPSILON) \
-                    * math.exp(-self.LAMBDA * self.steps)
+                
 
 
             for event in pygame.event.get():
@@ -165,11 +185,28 @@ class Qoridor:
                     
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_d:
+                        # this just displays the games
                         self.currentlyDrawing = not self.currentlyDrawing
                         print ("currentlyDrawing: ", self.currentlyDrawing)
                         
-                    elif event.key == pygame.K_r:
-                        print ("randomActions: ", self.randomActions)
+                        #this toggles between instant drawing (which is cool to see) and
+                        # a more practical slow drawing to inspect the agent's moves
+                    elif event.key == pygame.K_f:
+                        if self.gameSpeed == self.gameSpeedSlow:
+                            self.gameSpeed = 0
+                        else:
+                            self.gameSpeed = self.gameSpeedSlow
+                            #can only see effects if you are currently drawing
+                        print("switched to gamespeed to ", self.gameSpeed)
+                            
+                    elif event.key == pygame.K_l:
+                        # turning learning off, will cause all actions taken to be a prediction
+                        # from the model, so no randomness is involved, it also
+                        # stops updating actins/reward pairs to memory and turns learning off 
+                        # until this is turned back on. It's not good to learn without randomness basically
+                        
+                        self.learning = not self.learning
+                        print ("learning: ", self.learning)
                         
                 '''
                 if event.type == pygame.MOUSEBUTTONDOWN and agents[currentAgent] == HUMAN:
@@ -184,16 +221,14 @@ class Qoridor:
                 '''
             if(self.currentlyDrawing):
                 self.draw(currentAgent, pygame.mouse.get_pos())
-                drawn = True
+                pygame.display.flip()
+                pygame.display.update()
+                time.sleep(self.gameSpeed)
 
 
             #if self.maybeMoveChanged(currentAgent, pygame.mouse.get_pos()):
             #    self.draw(currentAgent, pygame.mouse.get_pos())
-            if drawn:
-                pygame.display.flip()
-                pygame.display.update()
-                drawn = False
-                time.sleep(self.gameSpeed)
+            
 
         #print("sleeping for ", self.gameSpeed)
         #time.sleep(self.gameSpeed) # so we can see wtf is going on
@@ -225,7 +260,8 @@ class Qoridor:
             #return 15*(botPathLength - topPathLength)\
             #    + 3 * self.state.getWallCount(BoardElement.AGENT_TOP) - self.movesTaken
             
-            return (botPathLength - topPathLength)
+            return -topPathLength
+            #return (botPathLength - topPathLength)
             
         elif agentType == BoardElement.AGENT_BOT:
             #if self.displayGame: print("returning ", 10*(topPathLength - botPathLength)\
@@ -233,7 +269,8 @@ class Qoridor:
             #return 10*(topPathLength - botPathLength)\
             #    + 3 * self.state.getWallCount(BoardElement.AGENT_BOT) - self.movesTaken
             
-            return (topPathLength - botPathLength)
+            #return (topPathLength - botPathLength)
+            return -botPathLength
             
             '''
             print("top:")
@@ -244,6 +281,11 @@ class Qoridor:
             print("MOVES TAKEN: ", self.movesTaken)
             '''
             
+            
+            
+    def getLearning(self):
+        return self.learning
+    
     def printDetails(self):
         print("Epsilon: "+"{:.6f}".format(self.epsilon))
         print("Memory Used: ", self.memory.getTotalMem())

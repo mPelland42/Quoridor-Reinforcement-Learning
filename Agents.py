@@ -161,7 +161,7 @@ class Agent:
         # might need to implement a negative reward for them if performance sucks
         
         
-        if self.game.randomActions and (random.random() < epsilon):
+        if self.game.getLearning() and (random.random() < epsilon):
             
             actionsTried = []
             randomAction = random.randint(0, 7)

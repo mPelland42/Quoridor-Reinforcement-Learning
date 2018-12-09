@@ -20,7 +20,7 @@ class BoardElement():
     AGENT_TOP = 3
     AGENT_BOT = 4
     OFF_GRID = 5
-
+    
 
 class GameState:
     def __init__(self, gridSize):
