@@ -40,7 +40,7 @@ class Qoridor:
         # flags
         self.gridSize = gridSize
         self.gameSpeedSlow = gameSpeedSlow
-        self.gameSpeed = gameSpeedSlow
+        self.gameSpeed = 0
         self.humanPlaying = humanPlaying
 
 
@@ -140,7 +140,7 @@ class Qoridor:
                         print("agent bot")
                 
 
-                actionIndex, action = agent.move(self.epsilon)
+                actionIndex, action = agent.move(self.epsilon, state)
                 self.movesTaken += 1
 
                 if action is None:
@@ -163,8 +163,8 @@ class Qoridor:
                         if self.state.getWinner() == None:
                             self.memory.addSample((previousState, previousAction, reward, state))
                         else:
-                            self.memory.addSample((state, actionIndex, reward + 5, None))
-                            self.memory.addSample((previousState, previousAction, reward - 5, state))
+                            self.memory.addSample((state, actionIndex, reward + 50, None))
+                            self.memory.addSample((previousState, previousAction, reward - 50, state))
                             done = True
                         agent.learn()
                     else:
@@ -256,7 +256,7 @@ class Qoridor:
 
         
         
-    def reward(self, agentType, previousTopPathLength, previousBotPathLength):
+    def reward(self, agentType, action, previousTopPathLength, previousBotPathLength):
         
         topPathLength = AStar(self, self.state.getPosition(BoardElement.AGENT_TOP), lambda square : \
                 square.Y == self.gridSize-1, lambda square : abs(square.Y - self.gridSize-1))[2]
@@ -264,26 +264,30 @@ class Qoridor:
         botPathLength = AStar(self, self.state.getPosition(BoardElement.AGENT_BOT), lambda square : \
                 square.Y == 0, lambda square : abs(square.Y))[2]
 
+        if action.getType() == Action.WALL:
+            multiplier = 3
+        else:
+            multiplier = 1
         
         # give reward if enemy path is longer or my path is shorter
         if agentType == BoardElement.AGENT_TOP:
             
             if botPathLength > previousBotPathLength:
-                return 5
+                return 5 * multiplier
             if topPathLength < previousTopPathLength:
-                return 5
+                return 5 * multiplier
             
             
         elif agentType == BoardElement.AGENT_BOT:
 
             if topPathLength > previousTopPathLength:
-                return 5
+                return 5 * multiplier
             if botPathLength < previousBotPathLength:
-                return 5
+                return 5 * multiplier
             
 
         # if this move acomplished neither, then return penalty
-        return -5
+        return -5 * multiplier
 
             
     def getLearning(self):
@@ -385,7 +389,7 @@ class Qoridor:
         #needs to be rewritten/readded to how things are structured.
         for i in self.state.wallPositions:
             #if __name__ == '__main__':
-                if i[1] == 2:
+                if i[1] == BoardElement.WALL_HORIZONTAL:
                     pygame.draw.rect(self.screen, self.wallColor, [i[0].X*boxSize + shift + 5, (i[0].Y + 1)*boxSize + shift, boxSize*2 - 10, 1], 10)
                 else:
                     pygame.draw.rect(self.screen, self.wallColor, [(i[0].X + 1) * boxSize + shift, i[0].Y * boxSize + shift + 5, 1, boxSize*2 - 10], 10)
@@ -512,14 +516,14 @@ class Qoridor:
             return False
 
         if start.X == end.X:
-            if(start.X - 1 >= 0) and self.isWall(start.X - 1, min(start.Y, end.Y)) == 2:
+            if(start.X - 1 >= 0) and self.isWall(start.X - 1, min(start.Y, end.Y)) == BoardElement.WALL_HORIZONTAL:
                 return False
-            if(start.X <= self.gridSize-1 and self.isWall(start.X, min(start.Y, end.Y)) == 2):
+            if(start.X <= self.gridSize-1 and self.isWall(start.X, min(start.Y, end.Y)) == BoardElement.WALL_HORIZONTAL):
                 return False
         else:
-            if(start.Y - 1 >= 0) and self.isWall(min(start.X, end.X), start.Y - 1) == 1:
+            if(start.Y - 1 >= 0) and self.isWall(min(start.X, end.X), start.Y - 1) == BoardElement.WALL_VERTICAL:
                 return False
-            if(start.Y <= self.gridSize-1 and self.isWall(min(start.X, end.X), start.Y) == 1):
+            if(start.Y <= self.gridSize-1 and self.isWall(min(start.X, end.X), start.Y) == BoardElement.WALL_VERTICAL):
                 return False
         return True
 
@@ -549,7 +553,7 @@ class Qoridor:
                 self.state.removeWallCount(BoardElement.AGENT_BOT)
                 
             
-        return self.reward(agentType, topPathLength, botPathLength)
+        return self.reward(agentType, action, topPathLength, botPathLength)
 
     
 
@@ -600,9 +604,9 @@ class Qoridor:
             # determine location of target intersection
             actualLocation = ((xCoord + 1) * self.screen.get_width() / (self.gridSize), (yCoord + 1) * self.screen.get_width() / (self.gridSize));
             if (abs(mousePosition[0] - actualLocation[0]) > abs(mousePosition[1] - actualLocation[1])):
-                orientation = 2
+                orientation = BoardElement.WALL_HORIZONTAL
             else:
-                orientation = 1
+                orientation = BoardElement.WALL_VERTICAL
             return ('w', (xCoord, yCoord), orientation)
 
 
@@ -618,6 +622,8 @@ class Qoridor:
         self.spaces[target[0]][target[1]] = agent
         self.agents[agent] = target
 
+
+
     #Use instead of addIntersection when only temporarily adding a wall
     #in order to check legality of a move
     def placeTempWall(self, location, orientation):
@@ -628,6 +634,7 @@ class Qoridor:
     #would be faster to return all walls, and then when they try a move, first check if it is valid.
     #this needs to _really_ be fixed
     #DEPRECATED DO NOT USE
+    '''
     def getLegalActions(self, agent):
         #first get legal pawn actions
         moves = self.getPawnMoves(self.getAgentPosition(agent))
@@ -648,6 +655,7 @@ class Qoridor:
                                 moves.append(('w', (i, j), 2))
                             self.removeWall((i, j))
         return moves
+    '''
 
     #swap to using gameState object
     #used to undo temp placement for testing of validity
@@ -681,9 +689,9 @@ class Qoridor:
                 return False
             self.removeTempWall(move.position)
             if not self.isWall(move.position.X, move.position.Y):
-                if move.orientation == 1 and not self.isWall(move.position.X, move.position.Y + 1) == 1 and not self.isWall(move.position.X, move.position.Y - 1) == 1:
+                if move.orientation == BoardElement.WALL_VERTICAL  and not self.isWall(move.position.X, move.position.Y + 1) == BoardElement.WALL_VERTICAL and not self.isWall(move.position.X, move.position.Y - 1) == BoardElement.WALL_VERTICAL:
                     return True
-                if move.orientation == 2 and not self.isWall(move.position.X + 1, move.position.Y) == 2 and not self.isWall(move.position.X - 1, move.position.Y) == 2:
+                if move.orientation == BoardElement.WALL_HORIZONTAL and not self.isWall(move.position.X + 1, move.position.Y) == BoardElement.WALL_HORIZONTAL and not self.isWall(move.position.X - 1, move.position.Y) == BoardElement.WALL_HORIZONTAL:
                     return True
         return False
 

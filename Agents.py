@@ -310,8 +310,8 @@ class TopAgent(Agent):
 
 
 
-    def move(self, epsilon):
-        actionTuple = Agent.move(self, BoardElement.AGENT_TOP, self.game.getState().asVector(BoardElement.AGENT_TOP), epsilon)
+    def move(self, epsilon, state):
+        actionTuple = Agent.move(self, BoardElement.AGENT_TOP, state, epsilon)
         
         #print("game ", actionTuple[1])
         return actionTuple
@@ -324,8 +324,8 @@ class BottomAgent(Agent):
         self.goal  = 0
         
         
-    def move(self, epsilon):
-        actionTuple = Agent.move(self, BoardElement.AGENT_BOT, self.game.getState().asVector(BoardElement.AGENT_BOT), epsilon)
+    def move(self, epsilon, state):
+        actionTuple = Agent.move(self, BoardElement.AGENT_BOT, state, epsilon)
         
         #print("game ", actionTuple[1])
         return actionTuple

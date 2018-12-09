@@ -8,7 +8,7 @@ Created on Wed Dec  5 13:48:37 2018
 import tensorflow as tf
 import os
 
-LAYER_SIZE = 70
+LAYER_SIZE = 150
 
 class Model:
     def __init__(self, num_states, num_actions, batch_size):
