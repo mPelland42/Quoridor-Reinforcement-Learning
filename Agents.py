@@ -36,7 +36,6 @@ class Action:
     JUMP_RIGHT = "JRIGHT"
     
     PAWN_MOVES = 8
-    PAWN_MOVE_PROBABILITY = 0.70
     
     def __init__(self, actionType, direction = None, orientation = None, position = None):
             self.actionType = actionType
@@ -160,7 +159,7 @@ class Agent:
         
         # exclude illegal moves for now
         # might need to implement a negative reward for them if performance sucks
-        if random.random() < Action.PAWN_MOVE_PROBABILITY:
+        if random.random() < epsilon:
             moveSize = Action.PAWN_MOVES
         else:
             moveSize = self.actionSize-1

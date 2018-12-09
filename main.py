@@ -9,7 +9,7 @@ import tensorflow as tf
 #import time
 
 gridSize = 9
-gameSpeedSlow = 2
+gameSpeedSlow = 3
 humanPlaying = False
 startWithDrawing = False
 

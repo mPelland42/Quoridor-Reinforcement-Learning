@@ -131,10 +131,11 @@ class Qoridor:
 
                 state = self.state.asVector(agentType)
                 
-                #if agentType == BoardElement.AGENT_TOP:
-                #    print("agent top")
-                #if agentType == BoardElement.AGENT_BOT:
-                #    print("agent bot")
+                if (self.printStuff):
+                    if agentType == BoardElement.AGENT_TOP:
+                        print("agent top")
+                    if agentType == BoardElement.AGENT_BOT:
+                        print("agent bot")
                 
 
                 actionIndex, action = agent.move(self.epsilon)
@@ -148,8 +149,10 @@ class Qoridor:
                     reward = self.performAction(agentType, action)
                 #newState = self.state.asVector(agentType)
 
-                #print("reward: ", reward)
-                #print(" ")
+                if self.printStuff:
+                    print("reward: ", reward)
+                    print(" ")
+                    
                 if self.learning:
                     if not firstMove:
                         #if self.movesTaken > 150:
@@ -211,6 +214,11 @@ class Qoridor:
                         
                     elif event.key == pygame.K_s:
                         print("save functionality of the model has not been implemented yet")
+                        
+                    if self.currentlyDrawing and self.gameSpeed == self.gameSpeedSlow:
+                        self.printStuff = True
+                    else:
+                        self.printStuff = False
                         
                 '''
                 if event.type == pygame.MOUSEBUTTONDOWN and agents[currentAgent] == HUMAN:
