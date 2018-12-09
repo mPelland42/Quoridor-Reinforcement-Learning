@@ -183,35 +183,47 @@ class Agent:
         else:
             q = self.model.predictOne(currentStateVector, self.sess)
             q = q.flatten()
-            values, indices = self.sess.run(tf.nn.top_k(q, len(q)))
-            i = 0
-            try:
-                while self.invalidMove(indices[i], agentType, self.game.getState()):
-                    #self.memory.addSample((self.game.getState().asVector(self.agentType),\
-                                           #indices[i], -10, None))
-                    i += 1
-            except IndexError:
-                #print("ERROR!")
-                #print("q: ", q)
-                #print("indices: ", indices)
-                #print("indicesLEN: ", len(indices))
-                #print("values: ", values)
-                #print("all actions: ")
-                #for a in self.allActions: print(a)
-                #print("i:", i)
-                #print("agentType: ", agentType)
-                #print("state: ", self.game.getState())
-                ##print("action: ", self.allActions[indices[i]])
-                #self.game.drawError()
-                return -1, None
-            chosenAction = indices[i]
-            return chosenAction, self.allActions[chosenAction]
+            q = self.sess.run(tf.nn.softmax(q))
             
+            values, indices = self.sess.run(tf.nn.top_k(q, len(q)))
+            values = values.tolist()
+            indices = indices.tolist()
+            
+            action = self.sample(values)
+            
+            while self.invalidMove(indices[action], agentType, self.game.getState()):
+                #print("action: ",action)
+                del values[action]
+                del indices[action]
+                
+                if len(values) == 0:
+                    print("BUG!")
+                    return -1, None
+                
+                action = self.sample(values)
+            return indices[action], self.allActions[indices[action]]
+                
     
+    
+    def sample(self, distribution):
+        if sum(distribution) != 1:
+            distribution = self.normalize(distribution)
+        choice = random.random()
+        i, total= 0, distribution[0]
+        while choice > total:
+            i += 1
+            total += distribution[i]
+        return i
     
 
-    
-
+    def normalize(self, vector):
+        s = float(sum(vector))
+        if s == 0: return vector
+        return [el / s for el in vector]
+        
+        
+        
+        
     def makeActionReadyForGame(self, agentType, action, gameState):
         
         position = action.getPosition()

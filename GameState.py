@@ -89,11 +89,32 @@ class GameState:
             self.grid[position.X*2 + 1][position.Y*2 + 1] = BoardElement.WALL
             self.grid[position.X*2 + 2][position.Y*2 + 1] = BoardElement.WALL
             
+            if position.X != 0:
+                # fill in the cracks
+                # left
+                if self.grid[position.X*2 - 2][position.Y*2 + 1] == BoardElement.WALL:
+                    self.grid[position.X*2 - 1][position.Y*2 + 1] = BoardElement.WALL
+                    
+            if position.X != self.gridSize-2:
+                # right
+                if self.grid[position.X*2 + 4][position.Y*2 + 1] == BoardElement.WALL:
+                    self.grid[position.X*2 + 3][position.Y*2 + 1] = BoardElement.WALL
+            
+                    
         elif orientation == BoardElement.WALL_VERTICAL:
             self.grid[position.X*2 + 1][position.Y*2] = BoardElement.WALL
             self.grid[position.X*2 + 1][position.Y*2 + 1] = BoardElement.WALL
             self.grid[position.X*2 + 1][position.Y*2 + 2] = BoardElement.WALL
             
+            if position.Y != 0:
+                # down
+                if self.grid[position.X*2 + 1][position.Y*2 - 2] == BoardElement.WALL:
+                    self.grid[position.X*2 + 1][position.Y*2 - 1] = BoardElement.WALL
+            
+            if position.Y != self.gridSize-2:
+                # up
+                if self.grid[position.X*2 + 1][position.Y*2 + 4] == BoardElement.WALL:
+                    self.grid[position.X*2 + 1][position.Y*2 + 3] = BoardElement.WALL
         
             
         self.intersections[position.X][position.Y] = orientation
