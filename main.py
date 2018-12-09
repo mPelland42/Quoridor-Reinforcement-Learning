@@ -9,8 +9,7 @@ import tensorflow as tf
 #import time
 
 gridSize = 9
-gameSpeed = 1
-displayGame = False
+gameSpeed = 0.5
 humanPlaying = False
 
 
@@ -20,12 +19,12 @@ BATCH_SIZE = 500
  #max decay, min decay
 MAX_EPSILON = 1.0
 MIN_EPSILON = 0.0
-LAMBDA = 0.000027 # decay
+LAMBDA = 0.0001 # decay
 
 
 
 
-game = Qoridor(gridSize, gameSpeed, displayGame, humanPlaying)
+game = Qoridor(gridSize, gameSpeed, humanPlaying)
 model = Model(game.getStateSize(), game.getActionSize(), BATCH_SIZE)
 mem = Memory(MEMORY)
 

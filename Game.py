@@ -7,6 +7,7 @@ import time
 
 import sys
 
+import random
 
 from Agents import Action
 from GameState import GameState
@@ -20,10 +21,7 @@ import math
 
 pygame.init()
 
-currentAgent = 0
-AI = 0
-HUMAN = 1
-agents = [AI, AI]
+
 
 
 SCREEN_WIDTH = 400
@@ -32,7 +30,7 @@ SCREEN_HEIGHT = 400
 
 
 class Qoridor:
-    def __init__(self, gridSize, gameSpeed, displayGame, humanPlaying):
+    def __init__(self, gridSize, gameSpeed, humanPlaying):
 
         # game colors for display
         self.agentColors = [(230, 46, 0), (0, 0, 255)] #red & purple
@@ -42,21 +40,22 @@ class Qoridor:
         # flags
         self.gridSize = gridSize
         self.gameSpeed = gameSpeed
-        self.displayGame = displayGame
+        self.humanPlaying = humanPlaying
 
 
         self.actions = Action.makeAllActions(gridSize)
 
         self.movesTillVictory = []
 
+        self.initialDraw = True
+        self.currentlyDrawing = False
+        self.randomActions = not humanPlaying
+        
         # reset game state
         self.reset()
 
         self.localAvgGameLength = 0
         self.games = 0
-        self.randomActions = True
-        self.currentlyDrawing = True
-
 
 
 
@@ -77,12 +76,11 @@ class Qoridor:
         print("Setting up agent networks...")
         self.topAgent = TopAgent(self, sess, model, memory)
         self.bottomAgent = BottomAgent(self, sess, model, memory)
-        self.super_agents = [self.topAgent, self.bottomAgent]
+        self.agents = [self.bottomAgent, self.topAgent]
         print("completed\n")
 
 
     def reset(self):
-        self.turn = 1
         self.lastMaybeMove = None
 
         self.movesTaken = 0
@@ -90,14 +88,12 @@ class Qoridor:
         self.state = GameState(self.gridSize)
         
         # also reset the visuals
-        if self.displayGame:
+        if self.currentlyDrawing or self.initialDraw:
+            self.initialDraw = False
             self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA, 32)
             self.draw(0, (0, 0))
             pygame.display.flip()
             pygame.display.update()
-            self.currentlyDisplaying = True
-
-
         # reset agents
 
 
@@ -105,24 +101,24 @@ class Qoridor:
 
         # reset game
         self.reset()
-        currentAgent = 0
         firstMove = True
 
         previousState = None
         previousAction = None
         done = False
+        
+        currentAgent = random.randint(0, 1)
 
 
         # run game till we have a winner
         while not done:
             #pygame handling
-
-
+            
             drawn = False
-            if agents[currentAgent] == AI:
+            if not self.humanPlaying:
                 #print ("\n============================================")
 
-                agent = self.super_agents[currentAgent]
+                agent = self.agents[currentAgent]
                 agentType = agent.getType()
 
                 actionIndex, action = agent.move(self.epsilon)
@@ -133,21 +129,21 @@ class Qoridor:
                     done = True
                     break
                 else:
-                    reward = self.performAction(currentAgent, action)
+                    reward = self.performAction(agentType, action)
                 #newState = self.state.asVector(agentType)
 
 
 
                 if not firstMove:
-                    if self.movesTaken > 150:
-                        done = True
+                    #if self.movesTaken > 150:
+                        #done = True
+                    #else:
+                    if self.state.getWinner() == None:
+                        self.memory.addSample((previousState, previousAction, reward, state))
                     else:
-                        if self.state.getWinner() == None:
-                            self.memory.addSample((previousState, previousAction, reward, state))
-                        else:
-                            self.memory.addSample((state, actionIndex, reward + 150, None))
-                            self.memory.addSample((previousState, previousAction, reward -150, state))
-                            done = True
+                        self.memory.addSample((state, actionIndex, reward + 3, None))
+                        self.memory.addSample((previousState, previousAction, reward -3, state))
+                        done = True
                     agent.learn()
                 else:
                     firstMove = False
@@ -157,49 +153,46 @@ class Qoridor:
 
                 currentAgent = (currentAgent + 1) % 2
 
-
-
                 self.steps += 1
                 self.epsilon = self.MIN_EPSILON + (self.MAX_EPSILON - self.MIN_EPSILON) \
                     * math.exp(-self.LAMBDA * self.steps)
-                #print("epsilon: ", self.epsilon)
 
 
-
-
-            if self.displayGame:
-
-
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT:
-                        pygame.quit()
-                        sys.exit()
-                    if event.type == pygame.KEYDOWN:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                    
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_d:
                         self.currentlyDrawing = not self.currentlyDrawing
-                    if event.type == pygame.MOUSEBUTTONDOWN and agents[currentAgent] == HUMAN:
-                        if self.playerAction(currentAgent, pygame.mouse.get_pos()):
-                            if self.endGame() != -1:
-                                #scores[currentAgent] += 1
-                                #print(scores)
-                                currentAgent = 0
-                                self.reset()
-                            else:
-                                currentAgent = (currentAgent+1)%2
-                            #self.screen.fill(0)
-                            #self.draw(currentAgent, pygame.mouse.get_pos())
-                            #drawn = True
-                if(self.currentlyDrawing):
-                    self.screen.fill(0)
-                    self.draw(currentAgent, pygame.mouse.get_pos())
-                    drawn = True
+                        print ("currentlyDrawing: ", self.currentlyDrawing)
+                        
+                    elif event.key == pygame.K_r:
+                        print ("randomActions: ", self.randomActions)
+                        
+                '''
+                if event.type == pygame.MOUSEBUTTONDOWN and agents[currentAgent] == HUMAN:
+                    if self.playerAction(currentAgent, pygame.mouse.get_pos()):
+                        if self.endGame() != -1:
+                            currentAgent = 0
+                            self.reset()
+                        else:
+                            currentAgent = (currentAgent+1)%2
+                        #self.draw(currentAgent, pygame.mouse.get_pos())
+                        #drawn = True
+                '''
+            if(self.currentlyDrawing):
+                self.draw(currentAgent, pygame.mouse.get_pos())
+                drawn = True
 
 
-                #if self.maybeMoveChanged(currentAgent, pygame.mouse.get_pos()):
-                #    self.screen.fill(0)
-                #    self.draw(currentAgent, pygame.mouse.get_pos())
-                if drawn:
-                    pygame.display.flip()
-                    pygame.display.update()
+            #if self.maybeMoveChanged(currentAgent, pygame.mouse.get_pos()):
+            #    self.draw(currentAgent, pygame.mouse.get_pos())
+            if drawn:
+                pygame.display.flip()
+                pygame.display.update()
+                drawn = False
                 time.sleep(self.gameSpeed)
 
         #print("sleeping for ", self.gameSpeed)
@@ -212,15 +205,44 @@ class Qoridor:
         print(" ", self.movesTaken)
         self.localAvgGameLength += self.movesTaken
 
-        self.displayGame = False
-        self.gameSpeed = 0
-        self.randomActions = True
+
         
-        if self.epsilon < 0.40 and self.games % 10 == 0:
-            print("Displaying one game..")
-            self.displayGame = True
-            self.gameSpeed = 0.2
-            self.randomActions = False
+        
+    def reward(self, agentType):
+        
+        topPathLength = AStar(self, self.state.getPosition(BoardElement.AGENT_TOP), lambda square : \
+                square.Y == self.gridSize-1, lambda square : abs(square.Y - self.gridSize-1))[2]
+
+        botPathLength = AStar(self, self.state.getPosition(BoardElement.AGENT_BOT), lambda square : \
+                square.Y == 0, lambda square : abs(square.Y))[2]
+
+
+
+        if agentType == BoardElement.AGENT_TOP:
+            
+            #if self.displayGame: print("returning ", 10*(botPathLength - topPathLength)\
+            #    + 2 * self.state.getWallCount(BoardElement.AGENT_TOP) - self.movesTaken)
+            #return 15*(botPathLength - topPathLength)\
+            #    + 3 * self.state.getWallCount(BoardElement.AGENT_TOP) - self.movesTaken
+            
+            return (botPathLength - topPathLength)
+            
+        elif agentType == BoardElement.AGENT_BOT:
+            #if self.displayGame: print("returning ", 10*(topPathLength - botPathLength)\
+            #    + 2 * self.state.getWallCount(BoardElement.AGENT_BOT) - self.movesTaken)
+            #return 10*(topPathLength - botPathLength)\
+            #    + 3 * self.state.getWallCount(BoardElement.AGENT_BOT) - self.movesTaken
+            
+            return (topPathLength - botPathLength)
+            
+            '''
+            print("top:")
+            print(self.state)
+            print("TPL: ",topPathLength)
+            print("BPL: ", botPathLength)
+            print("WC: ", self.state.getWallCount(BoardElement.AGENT_TOP))
+            print("MOVES TAKEN: ", self.movesTaken)
+            '''
             
     def printDetails(self):
         print("Epsilon: "+"{:.6f}".format(self.epsilon))
@@ -233,20 +255,19 @@ class Qoridor:
 
 
 
-
+    '''
     def drawError(self):
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA, 32)
         self.draw(0, (0, 0))
         pygame.display.flip()
         pygame.display.update()
 
-        self.screen.fill(0)
+        
         self.draw(currentAgent, pygame.mouse.get_pos())
         drawn = True
 
 
         if self.maybeMoveChanged(currentAgent, pygame.mouse.get_pos()):
-            self.screen.fill(0)
             self.draw(currentAgent, pygame.mouse.get_pos())
 
         for event in pygame.event.get():
@@ -258,7 +279,7 @@ class Qoridor:
             pygame.display.update()
 
         time.sleep(100)
-
+        '''
 
 
     def getStateSize(self):
@@ -301,6 +322,8 @@ class Qoridor:
     #draws it to the screen
     #this needs a _lot_ of edits to make up to date
     def draw(self, currAgent, mousePos):
+        
+        self.screen.fill(0)
 
         #needs to be edited to only display changes.
 
@@ -456,55 +479,27 @@ class Qoridor:
         return True
 
     #performs an action by specified agent
-    def performAction(self, agent, action):
+    def performAction(self, agentType, action):
         if action.getType() == Action.PAWN:
-            #print("moving")
-            #self.movePawn(agent, (action.getPosition().X, action.getPosition().Y))
-            if agent == 0: # top
+            
+            if agentType == BoardElement.AGENT_TOP:
                 self.state.updateAgentPosition(BoardElement.AGENT_TOP, action.getPosition())
-            elif agent == 1: # bot
+                
+            elif agentType == BoardElement.AGENT_BOT:
                 self.state.updateAgentPosition(BoardElement.AGENT_BOT, action.getPosition())
 
         else:
-            #print("placing a wall at ", action.getPosition())
 
             self.state.addIntersection(action.getPosition(), action.getOrientation())
-            if agent == 0: # top
+            if agentType == BoardElement.AGENT_TOP:
                 self.state.removeWallCount(BoardElement.AGENT_TOP)
-            elif agent == 1: # bot
+            elif agentType == BoardElement.AGENT_BOT:
                 self.state.removeWallCount(BoardElement.AGENT_BOT)
-
-
-
-
-        topPathLength = AStar(self, self.state.getPosition(BoardElement.AGENT_TOP), lambda square : \
-                square.Y == self.gridSize-1, lambda square : abs(square.Y - self.gridSize-1))[2]
-
-        botPathLength = AStar(self, self.state.getPosition(BoardElement.AGENT_BOT), lambda square : \
-                square.Y == 0, lambda square : abs(square.Y))[2]
-
-
-        if agent == 0: # top
+                
             
-            #if self.displayGame: print("returning ", 10*(botPathLength - topPathLength)\
-            #    + 2 * self.state.getWallCount(BoardElement.AGENT_TOP) - self.movesTaken)
-            #print("top:")
-            #print(self.state)
-            #print("TPL: ",topPathLength)
-            #print("BPL: ", botPathLength)
-            #print("WC: ", self.state.getWallCount(BoardElement.AGENT_TOP))
-            #print("MOVES TAKEN: ", self.movesTaken)
-            
-            #time.sleep(100)
-            return 8*(botPathLength - topPathLength)- self.movesTaken
-            #return 15*(botPathLength - topPathLength)\
-            #    + 3 * self.state.getWallCount(BoardElement.AGENT_TOP) - self.movesTaken
-        else:
-            #if self.displayGame: print("returning ", 10*(topPathLength - botPathLength)\
-            #    + 2 * self.state.getWallCount(BoardElement.AGENT_BOT) - self.movesTaken)
-            return 8*(topPathLength - botPathLength)- self.movesTaken
-            #return 10*(topPathLength - botPathLength)\
-            #    + 3 * self.state.getWallCount(BoardElement.AGENT_BOT) - self.movesTaken
+        return self.reward(agentType)
+
+    
 
         
     def playerAction(self, agent, mousePosition):
@@ -528,10 +523,10 @@ class Qoridor:
                 xCoord = 0
             if yCoord < 0:
                 yCoord = 0
-            if xCoord > 8:
-                xCoord = 8
-            if yCoord > 8:
-                yCoord = 8
+            if xCoord > self.gridSize-1:
+                xCoord = self.gridSize-1
+            if yCoord > self.gridSize-1:
+                yCoord = self.gridSize-1
             return ('p', (xCoord, yCoord))
         else:
             boxSize = self.screen.get_width() / (self.gridSize);

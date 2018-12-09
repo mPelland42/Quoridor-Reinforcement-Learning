@@ -26,7 +26,6 @@ class Action:
     PAWN = "PAWN"
     WALL = "WALL"
     
-    NUM_DIRECTIONS = 4
     UP = "UP"
     DOWN = "DOWN"
     LEFT = "LEFT"
@@ -59,10 +58,12 @@ class Action:
         allActions.append(Action(Action.PAWN, Action.JUMP_RIGHT))
         #allActions.append(Action(Action.PAWN, Action.STAY))
         
+        '''
         for x in range(gridSize - 1):
             for y in range(gridSize - 1):
                 allActions.append(Action(Action.WALL, None, BoardElement.WALL_HORIZONTAL, Point(x, y)))
                 allActions.append(Action(Action.WALL, None, BoardElement.WALL_VERTICAL, Point(x, y)))
+        '''
         return allActions
         
         
@@ -161,27 +162,17 @@ class Agent:
         
         
         if self.game.randomActions and (random.random() < epsilon):
-            count = 0
-            while True:
-                if random.random() < moveProbability:
-                    randomAction = random.randint(0, 3)
-                else:
-                    randomAction = random.randint(8, self.model.getNumActions() - 1)
-                
-                count += 1
-                if count > 100:
-                    # try the jumps
-                    for i in range(4):
-                        if not self.invalidMove(i + 4, agentType, self.game.getState()):
-                            print("an AI jumped!")
-                            return i + 4
-                    
-                    print("BUG")
-                    # if not, must be some weird bug, return None to avoid a catastrophe
-                    return -1, None
-                    
-                if not self.invalidMove(randomAction, agentType, self.game.getState()):
-                    break
+            
+            actionsTried = []
+            randomAction = random.randint(0, 7)
+            
+            while self.invalidMove(randomAction, agentType, self.game.getState()):
+                actionsTried.append(randomAction)
+                while True:
+                    randomAction = random.randint(0, 7)
+                    if randomAction not in actionsTried:
+                        break
+                        
                 
             return randomAction, self.allActions[randomAction]
         
