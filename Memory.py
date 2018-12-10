@@ -14,7 +14,7 @@ class Memory:
     def addSample(self, sample):
         self._samples.append(sample)
         if len(self._samples) > self._max_memory:
-            self._samples.pop(0)
+            del self._samples[0]
 
     def sample(self, no_samples):
         if no_samples > len(self._samples):

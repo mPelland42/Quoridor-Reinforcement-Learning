@@ -147,12 +147,19 @@ class GameState:
                     else:
                         v.append(self.grid[x][y])
             
+            # my position then enemy position
+            v.append(self.getPosition(BoardElement.AGENT_TOP).X)
+            v.append(self.getPosition(BoardElement.AGENT_TOP).Y)
+            
+            v.append(self.getPosition(BoardElement.AGENT_BOT).X)
+            v.append(self.getPosition(BoardElement.AGENT_BOT).Y)
+            
+            
             # my walls, then enemy walls
             v.append(self.walls[BoardElement.AGENT_TOP])
             v.append(self.walls[BoardElement.AGENT_BOT])
             
-            # i've taken out self.movesTaken for now
-            #v.append(self.movesTaken)
+            v.append(self.movesTaken)
 
 
 
@@ -166,12 +173,18 @@ class GameState:
                     else:
                         v.append(self.grid[x][y])
 
-
+            v.append(self.getPosition(BoardElement.AGENT_BOT).X)
+            v.append(self.getPosition(BoardElement.AGENT_BOT).Y)
+            
+            v.append(self.getPosition(BoardElement.AGENT_TOP).X)
+            v.append(self.getPosition(BoardElement.AGENT_TOP).Y)
+            
 
             # my walls, then enemy walls
             v.append(self.walls[BoardElement.AGENT_BOT])
             v.append(self.walls[BoardElement.AGENT_TOP])
-            #v.append(self.movesTaken)
+            
+            v.append(self.movesTaken)
 
         return np.array(v)
 

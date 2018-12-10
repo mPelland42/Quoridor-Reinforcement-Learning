@@ -36,9 +36,9 @@ class Action:
     JUMP_RIGHT = "JUMP RIGHT"
     
     PAWN_MOVES = 8
-    INVALID_PENALTY = -2
+    INVALID_PENALTY = -.75
     MOVE_PROBABILITY = .90
-    GAMMA = 0.5
+    GAMMA = 0.95
     greedy = True
     
     def __init__(self, actionType, direction = None, orientation = None, position = None):
@@ -182,11 +182,17 @@ class Agent:
             moveSize = self.actionSize-1
             
         
-        if self.game.getLearning() and (random.random() < epsilon):
+        if self.game.getLearning() and (random.random() <= epsilon):
             
-            actionsTried = []
+            #actionsTried = []
             randomAction = random.randint(0, moveSize)
+            if self.invalidMove(randomAction, agentType, self.game.getState()):
+                return randomAction, None
+            else:
+                return randomAction, self.allActions[randomAction]
             
+            
+            '''
             while self.invalidMove(randomAction, agentType, self.game.getState()):
                 self.memory.addSample((currentStateVector, randomAction, Action.INVALID_PENALTY, None))
                 actionsTried.append(randomAction)
@@ -197,14 +203,36 @@ class Agent:
                         
                 
             return randomAction, self.allActions[randomAction]
+            '''
         
         else:
             q = self.model.predictOne(currentStateVector, self.sess)
             q = q.flatten()
-            q = self.sess.run(tf.nn.softmax(q))
+            #q = self.sess.run(tf.nn.softmax(q))
             
-            values, indices = self.sess.run(tf.nn.top_k(q, len(q)))
+            #values, indices = self.sess.run(tf.nn.top_k(q, len(q)))
+            greedyAction = np.argmax(q)
             
+            
+            if self.game.printQ:
+                self.game.printQ = False
+                print(agentType)
+                print(currentStateVector)
+                values, indices = self.sess.run(tf.nn.top_k(q, len(q)))
+                
+                for i in indices:
+                    print(q[i], self.allActions[i])
+                    
+            if Action.greedy:
+                #greedyMove = indices[0]
+                
+                if self.invalidMove(greedyAction, agentType, self.game.getState()):
+                    return greedyAction, None
+                else:
+                    return greedyAction, self.allActions[greedyAction]
+                
+
+            '''
             values = values.tolist()
             indices = indices.tolist()
             
@@ -231,6 +259,7 @@ class Agent:
                 
                 action = self.sample(values)
             return indices[action], self.allActions[indices[action]]
+            '''
                 
     
     
@@ -348,7 +377,7 @@ class Agent:
             y[i] = current_q
             
         _, l = self.model.trainBatch(self.sess, x, y)
-        self.loss += int(l)
+        self.loss += l
         
         
 class TopAgent(Agent):

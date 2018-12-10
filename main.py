@@ -10,18 +10,20 @@ import tensorflow as tf
 
 gridSize = 5
 numWalls = 3
-gameSpeedSlow = 2
+gameSpeedSlow = 1
 humanPlaying = False
 startWithDrawing = False
 
 
-MEMORY = 80000
-NUM_EPISODES = 1000
+MEMORY = 1000
+NUM_EPOCHS = 500
+GAMES_PER_EPOCH = 20
 BATCH_SIZE = 128
  #max decay, min decay
 MAX_EPSILON = 1.0
 MIN_EPSILON = 0.0
-LAMBDA = 0.000050 # decay
+
+LAMBDA = 0.000075 # decay
 
 
 
@@ -39,10 +41,10 @@ with tf.Session() as sess:
         game.setLearningParameters(sess, model, mem, MAX_EPSILON, MIN_EPSILON, LAMBDA)
     
         cnt = 0
-        while cnt < NUM_EPISODES:
-            if cnt % 10 == 0:
-                print('Episode {} of {}'.format(cnt+1, NUM_EPISODES))
-                game.printDetails()
+        while cnt < NUM_EPOCHS:
+            if cnt % GAMES_PER_EPOCH == 0:
+                print('\nEpoch {} of {}'.format(cnt+1, NUM_EPOCHS))
+                game.printDetails(GAMES_PER_EPOCH)
             game.run()
             cnt += 1
         #plt.plot(gr.reward_store)
