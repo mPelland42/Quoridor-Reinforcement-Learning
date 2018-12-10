@@ -18,10 +18,6 @@ import random
 
 
 
-
-
-
-
 class Action:
     PAWN = "PAWN"
     WALL = "WALL"
@@ -36,9 +32,9 @@ class Action:
     JUMP_RIGHT = "JUMP RIGHT"
     
     PAWN_MOVES = 8
-    INVALID_PENALTY = -.75
     MOVE_PROBABILITY = .90
-    GAMMA = 0.95
+    GAMMA = 0.50
+    INVALID_PENALTY = -0.6
     greedy = True
     
     def __init__(self, actionType, direction = None, orientation = None, position = None):
@@ -162,7 +158,6 @@ class Agent:
     
     def invalidMove(self, index, agentType, gameState):
         action = self.allActions[index]
-        #action.position = gameState.agentPositions[agentType]
         action = self.makeActionReadyForGame(agentType, action, gameState)
 
         return not self.game.isLegalMove(agentType, action)
@@ -171,98 +166,91 @@ class Agent:
 
     
     def move(self, agentType, currentStateVector, epsilon):
-        #print("Agent: ", agentType)
         
         
-        # exclude illegal moves for now
-        # might need to implement a negative reward for them if performance sucks
+        if self.game.getLearning() and (random.random() <= epsilon):
+            
+            actionsTried = []
+            randomAction = random.randint(0, self.getRandomMoveSize())
+            
+            while self.invalidMove(randomAction, agentType, self.game.getState()):
+                self.memory.addSample((currentStateVector, randomAction, Action.INVALID_PENALTY, None))
+                self.learn()
+                actionsTried.append(randomAction)
+                while True:
+                    randomAction = random.randint(0, self.getRandomMoveSize())
+                    if randomAction not in actionsTried:
+                        break
+                        
+            return randomAction
+            
+        
+        else:
+            if Action.greedy:
+                q = self.model.predictOne(currentStateVector, self.sess)
+                q = q.flatten()
+                
+                if self.game.printQ:
+                    self.game.printQ = False
+                    print(agentType)
+                    print(self.game.state)
+                    print(currentStateVector)
+                    values, indices = self.sess.run(tf.nn.top_k(q, len(q)))
+                    values = values.tolist()
+                    indices = indices.tolist()
+                    for i in indices:
+                        print(values[i], self.allActions[indices[i]])
+    
+                # try the first without sorting the q's
+                greedyAction = np.argmax(q)
+            
+                if self.invalidMove(greedyAction, agentType, self.game.getState()):
+                    # now we have to sort
+                    # sort by best action, then run down the list until an action works
+                    
+                    values, indices = self.sess.run(tf.nn.top_k(q, len(q)))
+                    values = values.tolist()
+                    indices = indices.tolist()
+            
+                    for i in range(len(indices)-1):
+                        self.memory.addSample((currentStateVector, greedyAction, Action.INVALID_PENALTY, None))
+                        self.learn()
+                        greedyAction = indices[i+1]
+                        if not self.invalidMove(greedyAction, agentType, self.game.getState()):
+                            return greedyAction
+                
+                return greedyAction
+                        
+            else:
+                '''
+                action = self.sample(values)
+                
+                while self.invalidMove(indices[action], agentType, self.game.getState()):
+                    self.memory.addSample((currentStateVector, action, Action.INVALID_PENALTY, None))
+                    del values[action]
+                    del indices[action]
+                    
+                    if len(values) == 0:
+                        print("BUG!")
+                        return -1, None
+                    
+                    action = self.sample(values)
+                return indices[action], self.allActions[indices[action]]
+                '''
+                    
+        
+                
+
+
+                    
+                    
+    def getRandomMoveSize(self):
         if random.random() < Action.MOVE_PROBABILITY:
             moveSize = Action.PAWN_MOVES
         else:
             moveSize = self.actionSize-1
-            
-        
-        if self.game.getLearning() and (random.random() <= epsilon):
-            
-            #actionsTried = []
-            randomAction = random.randint(0, moveSize)
-            if self.invalidMove(randomAction, agentType, self.game.getState()):
-                return randomAction, None
-            else:
-                return randomAction, self.allActions[randomAction]
-            
-            
-            '''
-            while self.invalidMove(randomAction, agentType, self.game.getState()):
-                self.memory.addSample((currentStateVector, randomAction, Action.INVALID_PENALTY, None))
-                actionsTried.append(randomAction)
-                while True:
-                    randomAction = random.randint(0, moveSize)
-                    if randomAction not in actionsTried:
-                        break
+        return moveSize
                         
-                
-            return randomAction, self.allActions[randomAction]
-            '''
-        
-        else:
-            q = self.model.predictOne(currentStateVector, self.sess)
-            q = q.flatten()
-            #q = self.sess.run(tf.nn.softmax(q))
-            
-            #values, indices = self.sess.run(tf.nn.top_k(q, len(q)))
-            greedyAction = np.argmax(q)
-            
-            
-            if self.game.printQ:
-                self.game.printQ = False
-                print(agentType)
-                print(currentStateVector)
-                values, indices = self.sess.run(tf.nn.top_k(q, len(q)))
-                
-                for i in indices:
-                    print(q[i], self.allActions[i])
-                    
-            if Action.greedy:
-                #greedyMove = indices[0]
-                
-                if self.invalidMove(greedyAction, agentType, self.game.getState()):
-                    return greedyAction, None
-                else:
-                    return greedyAction, self.allActions[greedyAction]
-                
-
-            '''
-            values = values.tolist()
-            indices = indices.tolist()
-            
-            if self.game.printQ:
-                self.game.printQ = False
-                print(agentType)
-                print(currentStateVector)
-                for i in indices:
-                    print(self.allActions[i])
-                    print(q[i])
-            
-            
-            
-            action = self.sample(values)
-            
-            while self.invalidMove(indices[action], agentType, self.game.getState()):
-                self.memory.addSample((currentStateVector, action, Action.INVALID_PENALTY, None))
-                del values[action]
-                del indices[action]
-                
-                if len(values) == 0:
-                    print("BUG!")
-                    return -1, None
-                
-                action = self.sample(values)
-            return indices[action], self.allActions[indices[action]]
-            '''
-                
-    
-    
     def sample(self, distribution):
         if sum(distribution) != 1:
             distribution = self.normalize(distribution)
@@ -388,10 +376,9 @@ class TopAgent(Agent):
 
 
     def move(self, epsilon, state):
-        actionTuple = Agent.move(self, BoardElement.AGENT_TOP, state, epsilon)
+        actionIndex = Agent.move(self, BoardElement.AGENT_TOP, state, epsilon)
         
-        #print("game ", actionTuple[1])
-        return actionTuple
+        return actionIndex, self.allActions[actionIndex]
 
 
 
@@ -402,10 +389,9 @@ class BottomAgent(Agent):
         
         
     def move(self, epsilon, state):
-        actionTuple = Agent.move(self, BoardElement.AGENT_BOT, state, epsilon)
+        actionIndex = Agent.move(self, BoardElement.AGENT_BOT, state, epsilon)
         
-        #print("game ", actionTuple[1])
-        return actionTuple
+        return actionIndex, self.allActions[actionIndex]
     
     
         

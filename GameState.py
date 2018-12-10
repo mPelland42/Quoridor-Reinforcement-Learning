@@ -14,21 +14,21 @@ import copy
 import numpy as np
 
 class BoardElement():
-    EMPTY = 0
     WALL = 1
-    AGENT_TOP = 2
-    AGENT_BOT = 3
-    WALL_HORIZONTAL = 4
-    WALL_VERTICAL = 5
+    EMPTY = 0
+    AGENT_TOP = "T"
+    AGENT_BOT = "B"
+    WALL_HORIZONTAL = 2
+    WALL_VERTICAL = 3
     OFF_GRID = 6
 
 class GameState:
     def __init__(self, gridSize, numWalls):
         self.gridSize = gridSize
         self.fullGridSize = 2 * gridSize - 1
-        self.grid = [[0 for x in range(self.fullGridSize)] for x in range(self.fullGridSize)]
+        self.grid = [[BoardElement.EMPTY for x in range(self.fullGridSize)] for x in range(self.fullGridSize)]
         
-        self.intersections = [[0 for x in range(gridSize-1)] for x in range(gridSize-1)]
+        self.intersections = [[BoardElement.EMPTY for x in range(gridSize-1)] for x in range(gridSize-1)]
         
         topAgentPosition = Point(math.floor(gridSize/2), 0)
         botAgentPosition = Point(math.floor(gridSize/2), gridSize-1)
@@ -68,7 +68,7 @@ class GameState:
             if position.Y == 0:
                 self.winner = BoardElement.AGENT_BOT
                 
-                
+            
         self.movesTaken += 1
         
 
@@ -78,10 +78,14 @@ class GameState:
         elif agentType == BoardElement.AGENT_BOT:
             return copy.copy(self.agentPositions[BoardElement.AGENT_BOT])
 
+    def addMove(self):
+        self.movesTaken += 1
+    
     def getMovesTaken(self):
         return self.movesTaken
 
     def addIntersection(self, position, orientation):
+        
         self.wallPositions.append((position, orientation))
         
         if orientation == BoardElement.WALL_HORIZONTAL:
@@ -119,8 +123,7 @@ class GameState:
             
         self.intersections[position.X][position.Y] = orientation
         self.movesTaken += 1
-
-
+        
     def removeWallCount(self, agentType):
         self.walls[agentType] -= 1
 
@@ -137,21 +140,23 @@ class GameState:
     def asVector(self, agentType):
         v = []
         if agentType == BoardElement.AGENT_TOP:
-            for y in range(self.fullGridSize):
-                for x in reversed(range(self.fullGridSize)):
-                    # self is 2, enemy is 3
+            for y in range(self.gridSize-1):
+                for x in reversed(range(self.gridSize-1)):
+                    v.append(self.intersections[x][y])
+                    '''
                     if self.grid[x][y] == BoardElement.AGENT_TOP:
-                        v.append(2)
+                        v.append(BoardElement.EMPTY)
                     elif self.grid[x][y] == BoardElement.AGENT_BOT:
-                        v.append(3)
+                        v.append(BoardElement.EMPTY)
                     else:
                         v.append(self.grid[x][y])
-            
+                    '''
+                    
             # my position then enemy position
-            v.append(self.getPosition(BoardElement.AGENT_TOP).X)
+            v.append((self.gridSize - 1) - self.getPosition(BoardElement.AGENT_TOP).X)
             v.append(self.getPosition(BoardElement.AGENT_TOP).Y)
             
-            v.append(self.getPosition(BoardElement.AGENT_BOT).X)
+            v.append((self.gridSize - 1) - self.getPosition(BoardElement.AGENT_BOT).X)
             v.append(self.getPosition(BoardElement.AGENT_BOT).Y)
             
             
@@ -159,32 +164,35 @@ class GameState:
             v.append(self.walls[BoardElement.AGENT_TOP])
             v.append(self.walls[BoardElement.AGENT_BOT])
             
-            v.append(self.movesTaken)
+            #v.append(self.movesTaken)
 
 
 
         elif agentType == BoardElement.AGENT_BOT:
-            for y in reversed(range(self.fullGridSize)):
-                for x in range(self.fullGridSize):
+            for y in reversed(range(self.gridSize-1)):
+                for x in range(self.gridSize-1):
+                    v.append(self.intersections[x][y])
+                    '''
                     if self.grid[x][y] == BoardElement.AGENT_BOT:
-                        v.append(2)
+                        v.append(BoardElement.EMPTY)
                     elif self.grid[x][y] == BoardElement.AGENT_TOP:
-                        v.append(3)
+                        v.append(BoardElement.EMPTY)
                     else:
                         v.append(self.grid[x][y])
+                    '''
 
             v.append(self.getPosition(BoardElement.AGENT_BOT).X)
-            v.append(self.getPosition(BoardElement.AGENT_BOT).Y)
+            v.append((self.gridSize - 1) - self.getPosition(BoardElement.AGENT_BOT).Y)
             
             v.append(self.getPosition(BoardElement.AGENT_TOP).X)
-            v.append(self.getPosition(BoardElement.AGENT_TOP).Y)
+            v.append((self.gridSize - 1) - self.getPosition(BoardElement.AGENT_TOP).Y)
             
 
             # my walls, then enemy walls
             v.append(self.walls[BoardElement.AGENT_BOT])
             v.append(self.walls[BoardElement.AGENT_TOP])
             
-            v.append(self.movesTaken)
+            #v.append(self.movesTaken)
 
         return np.array(v)
 
@@ -192,8 +200,8 @@ class GameState:
 
     def __str__(self):
         s = "grid: \n"
-        for y in range(self.gridSize):
-            for x in range(self.gridSize):
+        for y in range(self.fullGridSize):
+            for x in range(self.fullGridSize):
                 s += str(self.grid[x][y])
             s+= "\n"
 

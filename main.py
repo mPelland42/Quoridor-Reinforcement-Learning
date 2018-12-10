@@ -15,15 +15,15 @@ humanPlaying = False
 startWithDrawing = False
 
 
-MEMORY = 1000
-NUM_EPOCHS = 500
+MEMORY = 300
+NUM_EPOCHS = 1000
 GAMES_PER_EPOCH = 20
-BATCH_SIZE = 128
+BATCH_SIZE = 50
  #max decay, min decay
 MAX_EPSILON = 1.0
 MIN_EPSILON = 0.0
 
-LAMBDA = 0.000075 # decay
+LAMBDA = 0.000035 # decay
 
 
 
@@ -41,9 +41,10 @@ with tf.Session() as sess:
         game.setLearningParameters(sess, model, mem, MAX_EPSILON, MIN_EPSILON, LAMBDA)
     
         cnt = 0
+        print("Learning Initiated...")
         while cnt < NUM_EPOCHS:
-            if cnt % GAMES_PER_EPOCH == 0:
-                print('\nEpoch {} of {}'.format(cnt+1, NUM_EPOCHS))
+            if cnt % GAMES_PER_EPOCH == 0 and cnt != 0 == 0:
+                print('\nEpoch {} of {}'.format(cnt, NUM_EPOCHS))
                 game.printDetails(GAMES_PER_EPOCH)
             game.run()
             cnt += 1

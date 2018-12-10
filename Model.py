@@ -57,12 +57,12 @@ class Model:
         finalConvoSize = math.ceil(math.ceil((self._grid_size)/2)/2)
         weights = {'W_conv1':tf.Variable(tf.random_normal([3,3,1,32])),
                    'W_conv2':tf.Variable(tf.random_normal([3,3,32,64])),
-                   'W_fc':tf.Variable(tf.random_normal([finalConvoSize * finalConvoSize * 64,256])),
-                   'out':tf.Variable(tf.random_normal([258, self._num_actions]))}
+                   'W_fc':tf.Variable(tf.random_normal([finalConvoSize * finalConvoSize * 64,512])),
+                   'out':tf.Variable(tf.random_normal([514, self._num_actions]))}
     
         biases = {'b_conv1':tf.Variable(tf.random_normal([32])),
                    'b_conv2':tf.Variable(tf.random_normal([64])),
-                   'b_fc':tf.Variable(tf.random_normal([256])),
+                   'b_fc':tf.Variable(tf.random_normal([512])),
                    'out':tf.Variable(tf.random_normal([self._num_actions]))}
     
         self._states = tf.placeholder(shape=[None, self._num_states], dtype=tf.float32)
