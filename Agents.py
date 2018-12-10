@@ -199,7 +199,7 @@ class Agent:
                     values = values.tolist()
                     indices = indices.tolist()
                     for i in indices:
-                        print(values[i], self.allActions[indices[i]])
+                        print(q[i], self.allActions[i])
     
                 # try the first without sorting the q's
                 greedyAction = np.argmax(q)
