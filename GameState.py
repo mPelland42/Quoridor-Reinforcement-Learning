@@ -18,23 +18,23 @@ class BoardElement():
     EMPTY = 0
     AGENT_TOP = "T"
     AGENT_BOT = "B"
-    WALL_HORIZONTAL = 2
-    WALL_VERTICAL = 3
+    WALL_HORIZONTAL = 1
+    WALL_VERTICAL = 2
     OFF_GRID = 6
 
 class GameState:
     def __init__(self, gridSize, numWalls):
         self.gridSize = gridSize
-        self.fullGridSize = 2 * gridSize - 1
-        self.grid = [[BoardElement.EMPTY for x in range(self.fullGridSize)] for x in range(self.fullGridSize)]
+        #self.fullGridSize = 2 * gridSize - 1
+        #self.grid = [[BoardElement.EMPTY for x in range(self.fullGridSize)] for x in range(self.fullGridSize)]
         
         self.intersections = [[BoardElement.EMPTY for x in range(gridSize-1)] for x in range(gridSize-1)]
         
         topAgentPosition = Point(math.floor(gridSize/2), 0)
         botAgentPosition = Point(math.floor(gridSize/2), gridSize-1)
         
-        self.grid[topAgentPosition.X * 2][topAgentPosition.Y * 2] = BoardElement.AGENT_TOP
-        self.grid[botAgentPosition.X * 2][botAgentPosition.Y * 2] = BoardElement.AGENT_BOT
+        #self.grid[topAgentPosition.X * 2][topAgentPosition.Y * 2] = BoardElement.AGENT_TOP
+        #self.grid[botAgentPosition.X * 2][botAgentPosition.Y * 2] = BoardElement.AGENT_BOT
 
         #use this now to get agent positions.
         self.agentPositions = {BoardElement.AGENT_TOP: topAgentPosition, BoardElement.AGENT_BOT: botAgentPosition}
@@ -48,10 +48,10 @@ class GameState:
 
     def updateAgentPosition(self, agentType, position):
         if agentType == BoardElement.AGENT_TOP:
-            self.grid[self.agentPositions[BoardElement.AGENT_TOP].X * 2]\
-            [self.agentPositions[BoardElement.AGENT_TOP].Y * 2] = BoardElement.EMPTY
+            #self.grid[self.agentPositions[BoardElement.AGENT_TOP].X * 2]\
+            #[self.agentPositions[BoardElement.AGENT_TOP].Y * 2] = BoardElement.EMPTY
             
-            self.grid[position.X * 2][position.Y * 2] = BoardElement.AGENT_TOP
+            #self.grid[position.X * 2][position.Y * 2] = BoardElement.AGENT_TOP
             
             self.agentPositions[BoardElement.AGENT_TOP] = position
             if position.Y == self.gridSize - 1:
@@ -59,10 +59,10 @@ class GameState:
 
 
         elif agentType == BoardElement.AGENT_BOT:
-            self.grid[self.agentPositions[BoardElement.AGENT_BOT].X * 2]\
-            [self.agentPositions[BoardElement.AGENT_BOT].Y * 2] = BoardElement.EMPTY
+            #self.grid[self.agentPositions[BoardElement.AGENT_BOT].X * 2]\
+            #[self.agentPositions[BoardElement.AGENT_BOT].Y * 2] = BoardElement.EMPTY
             
-            self.grid[position.X * 2][position.Y * 2] = BoardElement.AGENT_BOT
+            #self.grid[position.X * 2][position.Y * 2] = BoardElement.AGENT_BOT
             
             self.agentPositions[BoardElement.AGENT_BOT] = position
             if position.Y == 0:
@@ -87,7 +87,7 @@ class GameState:
     def addIntersection(self, position, orientation):
         
         self.wallPositions.append((position, orientation))
-        
+        '''
         if orientation == BoardElement.WALL_HORIZONTAL:
             self.grid[position.X*2][position.Y*2 + 1] = BoardElement.WALL
             self.grid[position.X*2 + 1][position.Y*2 + 1] = BoardElement.WALL
@@ -119,7 +119,7 @@ class GameState:
                 # up
                 if self.grid[position.X*2 + 1][position.Y*2 + 4] == BoardElement.WALL:
                     self.grid[position.X*2 + 1][position.Y*2 + 3] = BoardElement.WALL
-        
+        '''
             
         self.intersections[position.X][position.Y] = orientation
         self.movesTaken += 1
@@ -199,12 +199,12 @@ class GameState:
 
 
     def __str__(self):
-        s = "grid: \n"
-        for y in range(self.fullGridSize):
-            for x in range(self.fullGridSize):
-                s += str(self.grid[x][y])
-            s+= "\n"
-
+        #s = "grid: \n"
+        #for y in range(self.fullGridSize):
+        #    for x in range(self.fullGridSize):
+        #        s += str(self.grid[x][y])
+        #    s+= "\n"
+        s = ""
         s += "agentPositions[BoardElement.AGENT_TOP]: " + str(self.agentPositions[BoardElement.AGENT_TOP]) + "\n"
         s += "agentPositions[BoardElement.AGENT_BOT]: "+ str(self.agentPositions[BoardElement.AGENT_BOT]) + "\n"
         s += "Top Agent's walls left: " + str(self.walls[BoardElement.AGENT_TOP]) + "\n"

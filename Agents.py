@@ -15,7 +15,7 @@ import numpy as np
 import tensorflow as tf
 import copy
 import random
-
+import os
 
 
 class Action:
@@ -32,8 +32,9 @@ class Action:
     JUMP_RIGHT = "JUMP RIGHT"
     
     PAWN_MOVES = 8
+    TOP_K_SELECTION = 20
     MOVE_PROBABILITY = .90
-    GAMMA = 0.60
+    GAMMA = 0.80
     greedy = True
     
     def __init__(self, actionType, direction = None, orientation = None, position = None):
@@ -58,8 +59,8 @@ class Action:
         #allActions.append(Action(Action.PAWN, Action.STAY))
         
         
-        for x in range(gridSize - 1):
-            for y in range(gridSize - 1):
+        for y in range(gridSize - 1):
+            for x in range(gridSize - 1):
                 allActions.append(Action(Action.WALL, None, BoardElement.WALL_HORIZONTAL, Point(x, y)))
                 allActions.append(Action(Action.WALL, None, BoardElement.WALL_VERTICAL, Point(x, y)))
         
@@ -140,6 +141,7 @@ class Agent:
         self.recentLoss = 0
         
 
+        self.dir = os.path.dirname(os.path.realpath(__file__))+"\\"
 
     def getLoss(self):
         tmp = self.loss
@@ -168,12 +170,16 @@ class Agent:
     def move(self, agentType, currentStateVector, epsilon):
         
         
-        if self.game.getLearning() and (random.random() <= epsilon):
+        
+        if self.game.getRandom() and (random.random() <= epsilon):
+            
+            cnt = 0
             
             actionsTried = []
             randomAction = random.randint(0, self.getRandomMoveSize())
             
             while self.invalidMove(randomAction, agentType, self.game.getState()):
+                cnt += 1
                 self.memory.addSample((currentStateVector, randomAction, self.rewardInvalid, None))
                 self.learn()
                 actionsTried.append(randomAction)
@@ -181,6 +187,8 @@ class Agent:
                     randomAction = random.randint(0, self.getRandomMoveSize())
                     if randomAction not in actionsTried:
                         break
+                    if cnt > 1000:
+                        return -1
                         
             return randomAction
             
@@ -189,13 +197,14 @@ class Agent:
             if Action.greedy:
                 q = self.model.predictOne(currentStateVector, self.sess)
                 q = q.flatten()
+                values = None
                 
                 if self.game.printQ:
                     self.game.printQ = False
                     print(agentType)
                     print(self.game.state)
                     print(currentStateVector)
-                    values, indices = self.sess.run(tf.nn.top_k(q, len(q)))
+                    values, indices = self.sess.run(tf.nn.top_k(q, len(q)-1))
                     values = values.tolist()
                     indices = indices.tolist()
                     for i in indices:
@@ -207,17 +216,22 @@ class Agent:
                 if self.invalidMove(greedyAction, agentType, self.game.getState()):
                     # now we have to sort
                     # sort by best action, then run down the list until an action works
-                    
-                    values, indices = self.sess.run(tf.nn.top_k(q, len(q)))
-                    values = values.tolist()
-                    indices = indices.tolist()
+                    if values == None:
+                        values, indices = self.sess.run(tf.nn.top_k(q, Action.TOP_K_SELECTION))
+                        values = values.tolist()
+                        indices = indices.tolist()
             
-                    for i in range(len(indices)-1):
+                    for i in range(Action.TOP_K_SELECTION-1):
                         self.memory.addSample((currentStateVector, greedyAction, self.rewardInvalid, None))
                         self.learn()
                         greedyAction = indices[i+1]
                         if not self.invalidMove(greedyAction, agentType, self.game.getState()):
                             return greedyAction
+                        
+                    # no action was valid, so try the 8 basic moves to speed things up
+                    for i in range(Action.PAWN_MOVES):
+                        if not self.invalidMove(i, agentType, self.game.getState()):
+                            return i
                 
                 return greedyAction
                         
@@ -367,19 +381,17 @@ class Agent:
         _, l = self.model.trainBatch(self.sess, x, y)
         self.loss += l
         
+        
+        
+        
     def saveState(self, target = "agent.cpkt"):
-        saver = tf.train.saver()
-        if self.getType() == BoardElement.TOP_AGENT:
-            saver.save(self.sess, target)
-        else:
-            saver.save(self.sess, target)
+        saver = tf.train.Saver()
+        saver.save(self.sess, self.dir+target)
+        print("Saved!")
         
     def loadState(self, target = "agent.cpkt"):
-        saver = tf.train.saver()
-        if self.getType() == BoardElement.TOP_AGENT:
-            saver.restore(self.sess, target)
-        else:
-            saver.restore(self.sess, target)
+        saver = tf.train.Saver()
+        saver.restore(self.sess, self.dir+target)
     
 class TopAgent(Agent):
     def __init__(self, game, sess, model, memory, rewardInvalid):
@@ -390,6 +402,8 @@ class TopAgent(Agent):
 
     def move(self, epsilon, state):
         actionIndex = Agent.move(self, BoardElement.AGENT_TOP, state, epsilon)
+        if actionIndex == -1:
+            return -1, None
         
         return actionIndex, self.allActions[actionIndex]
 
@@ -403,6 +417,8 @@ class BottomAgent(Agent):
         
     def move(self, epsilon, state):
         actionIndex = Agent.move(self, BoardElement.AGENT_BOT, state, epsilon)
+        if actionIndex == -1:
+            return -1, None
         
         return actionIndex, self.allActions[actionIndex]
     

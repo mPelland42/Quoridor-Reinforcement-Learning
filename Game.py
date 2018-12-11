@@ -23,13 +23,13 @@ pygame.init()
 
 
 
-REWARD_WIN = 1.5
-REWARD_LOSE = -1.5
-REWARD_ILLEGAL = -0.75
-REWARD_GOOD_DIRECTION = 0.02
-REWARD_BAD_DIRECTION = -0.04
-REWARD_GOOD_WALL = 0.02
-REWARD_BAD_WALL = -0.04
+REWARD_WIN = 0.5
+REWARD_LOSE = 0
+REWARD_ILLEGAL = -0.20
+REWARD_GOOD_DIRECTION = 0.15
+REWARD_BAD_DIRECTION = -0.10
+REWARD_GOOD_WALL = 0.10
+REWARD_BAD_WALL = -0.10
 
 
 
@@ -60,12 +60,12 @@ class Qoridor:
 
         self.initialDraw = True
         self.currentlyDrawing = startWithDrawing
-        self.learning = not humanPlaying
+        self.random = True
         
         self.printStuff = False
         self.printQ = False
                         
-        print("Learning: ", self.learning)
+        print("Random: ", self.random)
         print("drawing: ", self.currentlyDrawing)
         print("game speed: ", self.gameSpeed)
         print("printing: ", self.printStuff)
@@ -160,6 +160,10 @@ class Qoridor:
                 
 
                 actionIndex, action = agent.move(self.epsilon, state)
+                if actionIndex == -1:
+                    print("WHAT!?")
+                    break
+                    
                 self.movesTaken += 1
                 
                 reward = self.performAction(agentType, action)
@@ -169,31 +173,29 @@ class Qoridor:
 
                 if self.printStuff:
                     print("reward: ", reward)
-                    print(" ")
                     
-                if self.learning:
-                    if not firstMove:
-                        if self.state.getWinner() == None:
-                            self.memory.addSample((previousState, previousActionIndex, previousReward, previousNewState))
-                            
-                        else:
-                            self.memory.addSample((state, actionIndex, REWARD_WIN, None))
-                            self.memory.addSample((previousState, previousActionIndex, REWARD_LOSE, previousNewState))
-                            self.victories[agentType] += 1
-                            done = True
-                            
-                            
-                            
-                        self.gameReward += reward
-                        self.recentReward += reward
+                if not firstMove:
+                    if self.state.getWinner() == None:
+                        self.memory.addSample((previousState, previousActionIndex, previousReward, previousNewState))
                         
-                        agent.learn()
                     else:
-                        firstMove = False
+                        self.memory.addSample((state, actionIndex, REWARD_WIN, None))
+                        self.memory.addSample((previousState, previousActionIndex, REWARD_LOSE, previousNewState))
+                        self.victories[agentType] += 1
+                        done = True
                         
-                    self.steps += 1
-                    self.epsilon = self.MIN_EPSILON + (self.MAX_EPSILON - self.MIN_EPSILON) \
-                        * math.exp(-self.LAMBDA * self.steps)
+                        
+                        
+                    self.gameReward += reward
+                    self.recentReward += reward
+                    
+                    agent.learn()
+                else:
+                    firstMove = False
+                    
+                self.steps += 1
+                self.epsilon = self.MIN_EPSILON + (self.MAX_EPSILON - self.MIN_EPSILON) \
+                    * math.exp(-self.LAMBDA * self.steps)
 
                 if not self.state.getWinner() == None:
                     done = True
@@ -227,20 +229,15 @@ class Qoridor:
                             #can only see effects if you are currently drawing
                         print("switched to gamespeed to ", self.gameSpeed)
                             
-                    elif event.key == pygame.K_l:
-                        # turning learning off, will cause all actions taken to be a prediction
-                        # from the model, so no randomness is involved, it also
-                        # stops updating actins/reward pairs to memory and turns learning off 
-                        # until this is turned back on. It's not good to learn without randomness basically
-                        
-                        self.learning = not self.learning
-                        print ("learning: ", self.learning)
+                    elif event.key == pygame.K_r:
+                        # turning random off, will cause all actions taken to be a prediction
+                        # from the model, so no randomness is involved
+                        self.random = not self.random
+                        print ("Random: ", self.random)
                         
                         
                     elif event.key == pygame.K_s:
-                        print("save functionality of the model has not been implemented yet")
                         self.topAgent.saveState()
-                        self.bottomAgent.saveState()
                         
                         
                         
@@ -277,8 +274,6 @@ class Qoridor:
         agent.getLoss()
         #print(" ", self.movesTaken, agent.getLoss())
         self.localAvgGameLength += self.movesTaken
-        self.topAgent.saveState()
-        self.bottomAgent.saveState()
 
 
         
@@ -300,8 +295,8 @@ class Qoridor:
             
             
             
-    def getLearning(self):
-        return self.learning
+    def getRandom(self):
+        return self.random
     
     def printDetails(self, gamesPerEpoch):
         self.localAvgGameLength = self.localAvgGameLength / gamesPerEpoch
