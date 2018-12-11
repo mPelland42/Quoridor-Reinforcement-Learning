@@ -18,10 +18,18 @@ from Agents import TopAgent
 from Agents import BottomAgent
 
 import math
-import copy
 
 pygame.init()
 
+
+
+REWARD_WIN = 1.5
+REWARD_LOSE = -1.5
+REWARD_ILLEGAL = -0.75
+REWARD_GOOD_DIRECTION = 0.02
+REWARD_BAD_DIRECTION = -0.04
+REWARD_GOOD_WALL = 0.02
+REWARD_BAD_WALL = -0.04
 
 
 
@@ -68,7 +76,7 @@ class Qoridor:
 
         self.localAvgGameLength = 0
         self.games = 0
-        self.victories = 0
+        self.victories = {BoardElement.AGENT_TOP: 0, BoardElement.AGENT_BOT: 0}
 
 
 
@@ -88,8 +96,8 @@ class Qoridor:
         self.MaxXStore = []
 
         print("Setting up agent networks...")
-        self.topAgent = TopAgent(self, sess, model, memory)
-        self.bottomAgent = BottomAgent(self, sess, model, memory)
+        self.topAgent = TopAgent(self, sess, model, memory, REWARD_ILLEGAL)
+        self.bottomAgent = BottomAgent(self, sess, model, memory, REWARD_ILLEGAL)
         self.agents = [self.bottomAgent, self.topAgent]
         print("completed\n")
 
@@ -169,17 +177,16 @@ class Qoridor:
                             self.memory.addSample((previousState, previousActionIndex, previousReward, previousNewState))
                             
                         else:
-                            self.memory.addSample((state, actionIndex, 1, None))
-                            self.memory.addSample((previousState, previousActionIndex, -1, previousNewState))
-                            self.victories += 1
+                            self.memory.addSample((state, actionIndex, REWARD_WIN, None))
+                            self.memory.addSample((previousState, previousActionIndex, REWARD_LOSE, previousNewState))
+                            self.victories[agentType] += 1
                             done = True
+                            
+                            
+                            
                         self.gameReward += reward
                         self.recentReward += reward
                         
-                        # have to bail on bad runs
-                        #if self.gameReward < -20 * self.gridSize:
-                        #    done = True
-                            
                         agent.learn()
                     else:
                         firstMove = False
@@ -276,14 +283,14 @@ class Qoridor:
         
         if action.getType() == Action.PAWN:
             if pathShorter:
-                return 0
+                return REWARD_GOOD_DIRECTION
             else:
-                return -0.05
+                return REWARD_BAD_DIRECTION
         else:
             if pathBlocked:
-                return 0
+                return REWARD_GOOD_WALL
             else:
-                return -0.05
+                return REWARD_BAD_WALL
             
             
             
@@ -295,8 +302,8 @@ class Qoridor:
         self.localAvgGameLength = self.localAvgGameLength / gamesPerEpoch
         self.recentRewardAvg = self.recentReward / gamesPerEpoch
         self.recentReward = 0
-        print("Victories: ", self.victories)
-        self.victories = 0
+        print("Top Victories: ", self.victories[BoardElement.AGENT_TOP])
+        print("Bot Victories: ", self.victories[BoardElement.AGENT_BOT])
         print("Local Average Game Length: ", self.localAvgGameLength)
         print("Local Average Game Reward: ", self.recentRewardAvg)
         print("Local Average Loss: ", self.agents[0].getRecentLoss())

@@ -33,8 +33,7 @@ class Action:
     
     PAWN_MOVES = 8
     MOVE_PROBABILITY = .90
-    GAMMA = 0.50
-    INVALID_PENALTY = -0.6
+    GAMMA = 0.60
     greedy = True
     
     def __init__(self, actionType, direction = None, orientation = None, position = None):
@@ -125,11 +124,12 @@ class Action:
 # self.game should be automatically updated when changes outside of this scope,
 # (passed as a deep copy)
 class Agent:
-    def __init__(self, game, agentType, sess, model, memory):
+    def __init__(self, game, agentType, sess, model, memory, rewardInvalid):
         self.game = game
         self.sess = sess
         self.model = model
         self.memory = memory
+        self.rewardInvalid = rewardInvalid
         self.agentType = agentType
         gridSize = game.getGridSize()
         
@@ -174,7 +174,7 @@ class Agent:
             randomAction = random.randint(0, self.getRandomMoveSize())
             
             while self.invalidMove(randomAction, agentType, self.game.getState()):
-                self.memory.addSample((currentStateVector, randomAction, Action.INVALID_PENALTY, None))
+                self.memory.addSample((currentStateVector, randomAction, self.rewardInvalid, None))
                 self.learn()
                 actionsTried.append(randomAction)
                 while True:
@@ -213,7 +213,7 @@ class Agent:
                     indices = indices.tolist()
             
                     for i in range(len(indices)-1):
-                        self.memory.addSample((currentStateVector, greedyAction, Action.INVALID_PENALTY, None))
+                        self.memory.addSample((currentStateVector, greedyAction, self.rewardInvalid, None))
                         self.learn()
                         greedyAction = indices[i+1]
                         if not self.invalidMove(greedyAction, agentType, self.game.getState()):
@@ -369,8 +369,8 @@ class Agent:
         
         
 class TopAgent(Agent):
-    def __init__(self, game, sess, model, memory):
-        Agent.__init__(self, game, BoardElement.AGENT_TOP, sess, model, memory)
+    def __init__(self, game, sess, model, memory, rewardInvalid):
+        Agent.__init__(self, game, BoardElement.AGENT_TOP, sess, model, memory, rewardInvalid)
         self.goal = self.game.getGridSize() - 1
 
 
@@ -383,8 +383,8 @@ class TopAgent(Agent):
 
 
 class BottomAgent(Agent):
-    def __init__(self, game, sess, model, memory):
-        Agent.__init__(self, game, BoardElement.AGENT_BOT, sess, model, memory)
+    def __init__(self, game, sess, model, memory, rewardInvalid):
+        Agent.__init__(self, game, BoardElement.AGENT_BOT, sess, model, memory, rewardInvalid)
         self.goal  = 0
         
         
