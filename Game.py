@@ -239,6 +239,9 @@ class Qoridor:
                         
                     elif event.key == pygame.K_s:
                         print("save functionality of the model has not been implemented yet")
+                        self.topAgent.saveState()
+                        self.bottomAgent.saveState()
+                        
                         
                         
                     elif event.key == pygame.K_p:
@@ -274,6 +277,8 @@ class Qoridor:
         agent.getLoss()
         #print(" ", self.movesTaken, agent.getLoss())
         self.localAvgGameLength += self.movesTaken
+        self.topAgent.saveState()
+        self.bottomAgent.saveState()
 
 
         

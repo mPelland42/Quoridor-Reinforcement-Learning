@@ -367,7 +367,20 @@ class Agent:
         _, l = self.model.trainBatch(self.sess, x, y)
         self.loss += l
         
+    def saveState(self, target = "agent.cpkt"):
+        saver = tf.train.saver()
+        if self.getType() == BoardElement.TOP_AGENT:
+            saver.save(self.sess, target)
+        else:
+            saver.save(self.sess, target)
         
+    def loadState(self, target = "agent.cpkt"):
+        saver = tf.train.saver()
+        if self.getType() == BoardElement.TOP_AGENT:
+            saver.restore(self.sess, target)
+        else:
+            saver.restore(self.sess, target)
+    
 class TopAgent(Agent):
     def __init__(self, game, sess, model, memory, rewardInvalid):
         Agent.__init__(self, game, BoardElement.AGENT_TOP, sess, model, memory, rewardInvalid)
