@@ -168,7 +168,7 @@ class Agent:
     def move(self, agentType, currentStateVector, epsilon):
         
         
-        if self.game.getLearning() and (random.random() <= epsilon):
+        if self.game.getLearning() and (random.random() <= epsilon) or agentType == BoardElement.AGENT_BOT:
             
             actionsTried = []
             randomAction = random.randint(0, self.getRandomMoveSize())
@@ -367,20 +367,8 @@ class Agent:
         _, l = self.model.trainBatch(self.sess, x, y)
         self.loss += l
         
-    def saveState(self, target = "agent.cpkt"):
-        saver = tf.train.saver()
-        if self.getType() == BoardElement.TOP_AGENT:
-            saver.save(self.sess, target)
-        else:
-            saver.save(self.sess, target)
         
-    def loadState(self, target = "agent.cpkt"):
-        saver = tf.train.saver()
-        if self.getType() == BoardElement.TOP_AGENT:
-            saver.restore(self.sess, target)
-        else:
-            saver.restore(self.sess, target)
-    
+        
 class TopAgent(Agent):
     def __init__(self, game, sess, model, memory, rewardInvalid):
         Agent.__init__(self, game, BoardElement.AGENT_TOP, sess, model, memory, rewardInvalid)
@@ -393,6 +381,14 @@ class TopAgent(Agent):
         
         return actionIndex, self.allActions[actionIndex]
 
+
+    def save(self):
+        saver = tf.train.Saver()
+        saver.save(self.sess, "./topAgent.cpkt")
+            
+    def load(self):
+        saver = tf.train.Saver()
+        saver.restore(self.sess, "./topAgent.cpkt")
 
 
 class BottomAgent(Agent):
