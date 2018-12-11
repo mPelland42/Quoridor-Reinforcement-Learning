@@ -8,22 +8,22 @@ import tensorflow as tf
 
 #import time
 
-gridSize = 7
-numWalls = 5
+gridSize = 6
+numWalls = 4
 gameSpeedSlow = 1
 humanPlaying = False
 startWithDrawing = False
 
 
-MEMORY = 400
-NUM_EPOCHS = 1000
+MEMORY = 1000
+NUM_EPOCHS = 2000
 GAMES_PER_EPOCH = 20
 BATCH_SIZE = 150
  #max decay, min decay
 MAX_EPSILON = 1.0
 MIN_EPSILON = 0.0
 
-LAMBDA = 0.000020 # decay
+LAMBDA = 0.0000125 # decay
 
 
 

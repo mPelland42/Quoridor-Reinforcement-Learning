@@ -33,10 +33,6 @@ class Model:
         #self.defineCNN()
         self.defineModel()
         
-        #self.dir = os.path.dirname(os.path.realpath(__file__))
-        #self.modelSaver = tf.train.Saver(self._logits)
-        
-
     def defineModel(self):
         self._states = tf.placeholder(shape=[None, self._num_states], dtype=tf.float32)
         self._q_s_a = tf.placeholder(shape=[None, self._num_actions], dtype=tf.float32)

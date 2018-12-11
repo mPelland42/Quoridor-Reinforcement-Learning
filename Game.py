@@ -23,14 +23,14 @@ pygame.init()
 
 
 
-REWARD_WIN = 1.5
-REWARD_LOSE = -1.5
-REWARD_ILLEGAL = -0.75
-REWARD_GOOD_DIRECTION = 0.02
-REWARD_BAD_DIRECTION = -0.04
-REWARD_GOOD_WALL = 0.02
-REWARD_BAD_WALL = -0.04
+REWARD_WIN = 1.0
+REWARD_LOSE = -1.0
 
+REWARD_ILLEGAL = -0.25
+REWARD_GOOD_DIRECTION = 0.0
+REWARD_BAD_DIRECTION = -0.02
+REWARD_GOOD_WALL = 0.10
+REWARD_BAD_WALL = -0.05
 
 
 SCREEN_WIDTH = 400
@@ -60,17 +60,17 @@ class Qoridor:
 
         self.initialDraw = True
         self.currentlyDrawing = startWithDrawing
-        self.learning = not humanPlaying
-        
+        self.random = True
+
         self.printStuff = False
         self.printQ = False
-                        
-        print("Learning: ", self.learning)
+
+        print("Random: ", self.random)
         print("drawing: ", self.currentlyDrawing)
         print("game speed: ", self.gameSpeed)
         print("printing: ", self.printStuff)
-    
-        
+
+
         # reset game state
         self.reset()
 
@@ -109,7 +109,7 @@ class Qoridor:
         self.visited = []
         self.gameReward = 0
         self.state = GameState(self.gridSize, self.numWalls)
-        
+
         # also reset the visuals
         if self.currentlyDrawing or self.initialDraw:
             self.initialDraw = False
@@ -118,7 +118,7 @@ class Qoridor:
             pygame.display.flip()
             pygame.display.update()
             self.initialDraw = False
-            
+
 
 
     def run(self):
@@ -133,14 +133,14 @@ class Qoridor:
         newState = None
         previousNewState =  None
         done = False
-        
+
         currentAgent = random.randint(0, 1)
 
 
         # run game till we have a winner
         while not done:
             #pygame handling
-            
+
             #drawn = False
             if not self.humanPlaying:
                 #print ("\n============================================")
@@ -149,51 +149,53 @@ class Qoridor:
                 agentType = agent.getType()
 
                 state = self.state.asVector(agentType)
-                
-                
-                
+
+
+
                 if (self.printStuff):
                     if agentType == BoardElement.AGENT_TOP:
                         print("agent top")
                     if agentType == BoardElement.AGENT_BOT:
                         print("agent bot")
-                
+
 
                 actionIndex, action = agent.move(self.epsilon, state)
+                if actionIndex == -1:
+                    print("WHAT!?")
+                    break
+
                 self.movesTaken += 1
-                
+
                 reward = self.performAction(agentType, action)
-                    
+
                 #reward += -self.state.getMovesTaken()
                 newState = self.state.asVector(agentType)
 
                 if self.printStuff:
                     print("reward: ", reward)
-                    print(" ")
-                    
-                if self.learning:
-                    if not firstMove:
-                        if self.state.getWinner() == None:
-                            self.memory.addSample((previousState, previousActionIndex, previousReward, previousNewState))
-                            
-                        else:
-                            self.memory.addSample((state, actionIndex, REWARD_WIN, None))
-                            self.memory.addSample((previousState, previousActionIndex, REWARD_LOSE, previousNewState))
-                            self.victories[agentType] += 1
-                            done = True
-                            
-                            
-                            
-                        self.gameReward += reward
-                        self.recentReward += reward
-                        
-                        agent.learn()
+
+                if not firstMove:
+                    if self.state.getWinner() == None:
+                        self.memory.addSample((previousState, previousActionIndex, previousReward, previousNewState))
+
                     else:
-                        firstMove = False
-                        
-                    self.steps += 1
-                    self.epsilon = self.MIN_EPSILON + (self.MAX_EPSILON - self.MIN_EPSILON) \
-                        * math.exp(-self.LAMBDA * self.steps)
+                        self.memory.addSample((state, actionIndex, REWARD_WIN, None))
+                        self.memory.addSample((previousState, previousActionIndex, REWARD_LOSE, previousNewState))
+                        self.victories[agentType] += 1
+                        done = True
+
+
+
+                    self.gameReward += reward
+                    self.recentReward += reward
+
+                    agent.learn()
+                else:
+                    firstMove = False
+
+                self.steps += 1
+                self.epsilon = self.MIN_EPSILON + (self.MAX_EPSILON - self.MIN_EPSILON) \
+                    * math.exp(-self.LAMBDA * self.steps)
 
                 if not self.state.getWinner() == None:
                     done = True
@@ -203,20 +205,20 @@ class Qoridor:
                 previousReward = reward
                 previousNewState = newState
                 currentAgent = (currentAgent + 1) % 2
-                
+
 
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
-                    
+
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_d:
                         # this just displays the games
                         self.currentlyDrawing = not self.currentlyDrawing
                         print ("currentlyDrawing: ", self.currentlyDrawing)
-                        
+
                         #this toggles between instant drawing (which is cool to see) and
                         # a more practical slow drawing to inspect the agent's moves
                     elif event.key == pygame.K_f:
@@ -227,28 +229,22 @@ class Qoridor:
                             #can only see effects if you are currently drawing
                         print("switched to gamespeed to ", self.gameSpeed)
                             
-                    elif event.key == pygame.K_l:
-                        # turning learning off, will cause all actions taken to be a prediction
-                        # from the model, so no randomness is involved, it also
-                        # stops updating actins/reward pairs to memory and turns learning off 
-                        # until this is turned back on. It's not good to learn without randomness basically
-                        
-                        self.learning = not self.learning
-                        print ("learning: ", self.learning)
-                        
-                        
-                    elif event.key == pygame.K_s:
-                        print("save functionality of the model has not been implemented yet")
-                        self.topAgent.save()
                     elif event.key == pygame.K_r:
-                        self.topAgent.load()
-                        
-                        
-                        
+                        # turning random off, will cause all actions taken to be a prediction
+                        # from the model, so no randomness is involved
+                        self.random = not self.random
+                        print ("Random: ", self.random)
+
+
+                    elif event.key == pygame.K_s:
+                        self.topAgent.saveState()
+
+
+
                     elif event.key == pygame.K_p:
                         self.printStuff = not self.printStuff
                         print("printing: ", self.printStuff)
-                        
+
                     elif event.key == pygame.K_q:
                         self.printQ = True
                 '''
@@ -280,11 +276,11 @@ class Qoridor:
         self.localAvgGameLength += self.movesTaken
 
 
-        
-        
+
+
     def reward(self, agentType, action, pathShorter, pathBlocked):
-        
-        
+
+
         if action.getType() == Action.PAWN:
             if pathShorter:
                 return REWARD_GOOD_DIRECTION
@@ -295,13 +291,13 @@ class Qoridor:
                 return REWARD_GOOD_WALL
             else:
                 return REWARD_BAD_WALL
-            
-            
-            
-            
-    def getLearning(self):
-        return self.learning
-    
+
+
+
+
+    def getRandom(self):
+        return self.random
+
     def printDetails(self, gamesPerEpoch):
         self.localAvgGameLength = self.localAvgGameLength / gamesPerEpoch
         self.recentRewardAvg = self.recentReward / gamesPerEpoch
@@ -311,8 +307,9 @@ class Qoridor:
         print("Local Average Game Length: ", self.localAvgGameLength)
         print("Local Average Game Reward: ", self.recentRewardAvg)
         print("Local Average Loss: ", self.agents[0].getRecentLoss())
-        
+
         print("Epsilon: "+"{:.6f}".format(self.epsilon))
+        self.topAgent.saveState()
 
         self.localAvgGameLength = 0
        # print("\nMoves/loss: ")
@@ -320,67 +317,67 @@ class Qoridor:
 
     #performs an action by specified agent
     def performAction(self, agentType, action):
-        
+
         pathShorter = False
         wallBlocked = False
-        
-        
+
+
         if action.getType() == Action.PAWN:
-            
-            
+
+
             if agentType == BoardElement.AGENT_TOP:
                 pathLengthPrevious = AStar(self, self.state.getPosition(BoardElement.AGENT_TOP), lambda square : \
                         square.Y == self.gridSize-1, lambda square : abs(square.Y - self.gridSize-1))[2]
-        
+
                 self.state.updateAgentPosition(BoardElement.AGENT_TOP, action.getPosition())
-                
+
                 pathLengthPost = AStar(self, self.state.getPosition(BoardElement.AGENT_TOP), lambda square : \
                         square.Y == self.gridSize-1, lambda square : abs(square.Y - self.gridSize-1))[2]
 
-                
+
             elif agentType == BoardElement.AGENT_BOT:
                 pathLengthPrevious = AStar(self, self.state.getPosition(BoardElement.AGENT_BOT), lambda square : \
                         square.Y == 0, lambda square : abs(square.Y))[2]
-                
+
                 self.state.updateAgentPosition(BoardElement.AGENT_BOT, action.getPosition())
-                
+
                 pathLengthPost = AStar(self, self.state.getPosition(BoardElement.AGENT_BOT), lambda square : \
                         square.Y == 0, lambda square : abs(square.Y))[2]
-                
+
             if pathLengthPost < pathLengthPrevious:
                 pathShorter = True
-                
+
         else: # wall action
-            
+
             if agentType == BoardElement.AGENT_TOP:
                 enemyPreviousPathLength =  AStar(self, self.state.getPosition(BoardElement.AGENT_BOT), lambda square : \
                 square.Y == 0, lambda square : abs(square.Y))[2]
-                
+
                 self.state.addIntersection(action.getPosition(), action.getOrientation())
                 self.state.removeWallCount(BoardElement.AGENT_TOP)
-                
+
                 enemyCurrentPathLength =  AStar(self, self.state.getPosition(BoardElement.AGENT_BOT), lambda square : \
                 square.Y == 0, lambda square : abs(square.Y))[2]
-                
+
             else:
                 enemyPreviousPathLength = AStar(self, self.state.getPosition(BoardElement.AGENT_TOP), lambda square : \
                 square.Y == self.gridSize-1, lambda square : abs(square.Y - self.gridSize-1))[2]
-                
+
                 self.state.addIntersection(action.getPosition(), action.getOrientation())
                 self.state.removeWallCount(BoardElement.AGENT_BOT)
-                
+
                 enemyCurrentPathLength = AStar(self, self.state.getPosition(BoardElement.AGENT_TOP), lambda square : \
                 square.Y == self.gridSize-1, lambda square : abs(square.Y - self.gridSize-1))[2]
-            
+
             if enemyCurrentPathLength > enemyPreviousPathLength:
                 wallBlocked = True
-                
-            
+
+
         return self.reward(agentType, action, pathShorter, wallBlocked)
 
-    
-    
-    
+
+
+
     def getStateSize(self):
         return len(self.state.asVector(BoardElement.AGENT_TOP))
 
@@ -415,13 +412,13 @@ class Qoridor:
             neighbors.append((space[0], space[1] - 1))
         if space[1] < self.gridSize-1:
             neighbors.append((space[0], space[1] + 1))
-            
+
         return neighbors
 
     #draws it to the screen
     #this needs a _lot_ of edits to make up to date
     def draw(self, currAgent, mousePos):
-        
+
         self.screen.fill(0)
 
         #needs to be edited to only display changes.
@@ -525,7 +522,7 @@ class Qoridor:
                     moves.append(target)
             elif self.isClear(target+action) and self.canMoveTo(space, target) and self.canMoveTo(target, target+action):
                 moves.append(target+action)
-                
+
                 """
             else: #now check diagonal jumps.
                 if neighbor[0] == 0:
@@ -580,7 +577,7 @@ class Qoridor:
 
 
 
-        
+
     def playerAction(self, agent, mousePosition):
         #determine location of mouse in board
         move = self.getMoveFromMousePos(agent, mousePosition)
