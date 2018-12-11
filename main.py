@@ -15,15 +15,15 @@ humanPlaying = False
 startWithDrawing = False
 
 
-MEMORY = 500
+MEMORY = 1000
 NUM_EPOCHS = 2000
 GAMES_PER_EPOCH = 20
-BATCH_SIZE = 250
+BATCH_SIZE = 150
  #max decay, min decay
 MAX_EPSILON = 1.0
 MIN_EPSILON = 0.0
 
-LAMBDA = 0.000040 # decay
+LAMBDA = 0.0000125 # decay
 
 
 

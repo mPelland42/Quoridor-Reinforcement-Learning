@@ -23,14 +23,14 @@ pygame.init()
 
 
 
-REWARD_WIN = 0.5
-REWARD_LOSE = 0
-REWARD_ILLEGAL = -0.20
-REWARD_GOOD_DIRECTION = 0.15
-REWARD_BAD_DIRECTION = -0.10
-REWARD_GOOD_WALL = 0.10
-REWARD_BAD_WALL = -0.10
+REWARD_WIN = 1.0
+REWARD_LOSE = -1.0
 
+REWARD_ILLEGAL = -0.25
+REWARD_GOOD_DIRECTION = 0.0
+REWARD_BAD_DIRECTION = -0.02
+REWARD_GOOD_WALL = 0.10
+REWARD_BAD_WALL = -0.05
 
 
 SCREEN_WIDTH = 400
@@ -309,6 +309,7 @@ class Qoridor:
         print("Local Average Loss: ", self.agents[0].getRecentLoss())
         
         print("Epsilon: "+"{:.6f}".format(self.epsilon))
+        self.topAgent.saveState()
 
         self.localAvgGameLength = 0
        # print("\nMoves/loss: ")

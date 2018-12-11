@@ -33,8 +33,8 @@ class Action:
     
     PAWN_MOVES = 8
     TOP_K_SELECTION = 20
-    MOVE_PROBABILITY = .90
-    GAMMA = 0.80
+    MOVE_PROBABILITY = .80
+    GAMMA = 0.90
     greedy = True
     
     def __init__(self, actionType, direction = None, orientation = None, position = None):
@@ -173,24 +173,7 @@ class Agent:
         
         if self.game.getRandom() and (random.random() <= epsilon):
             
-            cnt = 0
-            
-            actionsTried = []
-            randomAction = random.randint(0, self.getRandomMoveSize())
-            
-            while self.invalidMove(randomAction, agentType, self.game.getState()):
-                cnt += 1
-                self.memory.addSample((currentStateVector, randomAction, self.rewardInvalid, None))
-                self.learn()
-                actionsTried.append(randomAction)
-                while True:
-                    randomAction = random.randint(0, self.getRandomMoveSize())
-                    if randomAction not in actionsTried:
-                        break
-                    if cnt > 1000:
-                        return -1
-                        
-            return randomAction
+            return self.getRandomAction(agentType, currentStateVector, self.getRandomMoveSize())
             
         
         else:
@@ -229,11 +212,9 @@ class Agent:
                             return greedyAction
                         
                     # no action was valid, so try the 8 basic moves to speed things up
-                    for i in range(Action.PAWN_MOVES):
-                        if not self.invalidMove(i, agentType, self.game.getState()):
-                            return i
-                
-                return greedyAction
+                    return self.getRandomAction(agentType, currentStateVector, Action.PAWN_MOVES)
+                else:
+                    return greedyAction
                         
             else:
                 '''
@@ -255,8 +236,26 @@ class Agent:
         
                 
 
-
+    def getRandomAction(self, agentType, currentStateVector, numActions):
+        
+        randomAction = random.randint(0, numActions)
+        
+        cnt = 0
+        actionsTried = []
+        
+        while self.invalidMove(randomAction, agentType, self.game.getState()):
+            cnt += 1
+            self.memory.addSample((currentStateVector, randomAction, self.rewardInvalid, None))
+            self.learn()
+            actionsTried.append(randomAction)
+            while True:
+                randomAction = random.randint(0, self.getRandomMoveSize())
+                if randomAction not in actionsTried:
+                    break
+                if cnt > 1000:
+                    return -1
                     
+        return randomAction
                     
     def getRandomMoveSize(self):
         if random.random() < Action.MOVE_PROBABILITY:
