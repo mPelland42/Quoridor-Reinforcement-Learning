@@ -22,19 +22,19 @@ import math
 pygame.init()
 
 
+#REWARDS
+REWARD_WIN = 0.75
+REWARD_LOSE = -0.90
 
-REWARD_WIN = 1.0
-REWARD_LOSE = -1.0
-
-REWARD_ILLEGAL = -0.25
-REWARD_GOOD_DIRECTION = 0.0
-REWARD_BAD_DIRECTION = -0.02
-REWARD_GOOD_WALL = 0.10
+REWARD_ILLEGAL = -0.30
+REWARD_GOOD_DIRECTION = -0.01
+REWARD_BAD_DIRECTION = -0.06
+REWARD_GOOD_WALL = 0.30
 REWARD_BAD_WALL = -0.05
 
 
-SCREEN_WIDTH = 400
-SCREEN_HEIGHT = 400
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 800
 
 
 
@@ -96,12 +96,12 @@ class Qoridor:
         self.MaxXStore = []
 
         print("Setting up agent networks...")
-        self.topAgent = TopAgent(self, sess, model, memory, REWARD_ILLEGAL)
-        self.bottomAgent = BottomAgent(self, sess, model, memory, REWARD_ILLEGAL)
+        self.topAgent = TopAgent(self, sess, model, memory, REWARD_ILLEGAL, self.humanPlaying)
+        self.bottomAgent = BottomAgent(self, sess, model, memory, REWARD_ILLEGAL, self.humanPlaying)
         self.agents = [self.bottomAgent, self.topAgent]
         print("completed\n")
 
-
+    #reset state after each game
     def reset(self):
         self.lastMaybeMove = None
 
@@ -120,7 +120,7 @@ class Qoridor:
             self.initialDraw = False
 
 
-
+    #play the game based on set parameters
     def run(self):
 
         # reset game
@@ -140,9 +140,9 @@ class Qoridor:
         # run game till we have a winner
         while not done:
             #pygame handling
-
+            
             #drawn = False
-            if not self.humanPlaying:
+            if not self.humanPlaying or currentAgent == 0:
                 #print ("\n============================================")
 
                 agent = self.agents[currentAgent]
@@ -235,11 +235,12 @@ class Qoridor:
                         self.random = not self.random
                         print ("Random: ", self.random)
 
-
+                    elif event.key == pygame.K_h:
+                        self.humanPlaying = not self.humanPlaying
                     elif event.key == pygame.K_s:
-                        self.topAgent.saveState()
-
-
+                        if not self.humanPlaying:
+                            self.model.save(self.sess)
+                        
 
                     elif event.key == pygame.K_p:
                         self.printStuff = not self.printStuff
@@ -247,17 +248,17 @@ class Qoridor:
 
                     elif event.key == pygame.K_q:
                         self.printQ = True
-                '''
-                if event.type == pygame.MOUSEBUTTONDOWN and agents[currentAgent] == HUMAN:
-                    if self.playerAction(currentAgent, pygame.mouse.get_pos()):
-                        if self.endGame() != -1:
-                            currentAgent = 0
+                
+                if event.type == pygame.MOUSEBUTTONDOWN and self.humanPlaying and currentAgent == 1:
+                    if self.playerAction(BoardElement.AGENT_TOP, pygame.mouse.get_pos()):
+                        if not self.state.getWinner() == None:
+                            done = True
                             self.reset()
                         else:
                             currentAgent = (currentAgent+1)%2
                         #self.draw(currentAgent, pygame.mouse.get_pos())
                         #drawn = True
-                '''
+                
             if(self.currentlyDrawing):
                 self.draw(currentAgent, pygame.mouse.get_pos())
                 pygame.display.flip()
@@ -277,7 +278,7 @@ class Qoridor:
 
 
 
-
+    #determine reward for a given action
     def reward(self, agentType, action, pathShorter, pathBlocked):
 
 
@@ -298,6 +299,7 @@ class Qoridor:
     def getRandom(self):
         return self.random
 
+    #display results of learning
     def printDetails(self, gamesPerEpoch):
         self.localAvgGameLength = self.localAvgGameLength / gamesPerEpoch
         self.recentRewardAvg = self.recentReward / gamesPerEpoch
@@ -309,7 +311,6 @@ class Qoridor:
         print("Local Average Loss: ", self.agents[0].getRecentLoss())
 
         print("Epsilon: "+"{:.6f}".format(self.epsilon))
-        self.topAgent.saveState()
 
         self.localAvgGameLength = 0
        # print("\nMoves/loss: ")
@@ -389,34 +390,8 @@ class Qoridor:
 
     def getGridSize(self):
         return self.gridSize
-
-    #returns winner if game is over, else returns -1
-    #I don't think this is used at all anymore,
-    #DEPRECATED
-    def endGame(self):
-        if self.agents[0][1] == self.gridSize-1:
-            return 0
-        elif self.agents[1][1] == 0:
-            return 1
-        else:
-            return -1
-
-    #returns all neighboring cells
-    def getAllNeighbors(self, space):
-        neighbors = []
-        if space[0] > 0:
-            neighbors.append((space[0] - 1, space[1]))
-        if space[0] < self.gridSize-1:
-            neighbors.append((space[0] + 1, space[1]))
-        if space[1] > 0:
-            neighbors.append((space[0], space[1] - 1))
-        if space[1] < self.gridSize-1:
-            neighbors.append((space[0], space[1] + 1))
-
-        return neighbors
-
-    #draws it to the screen
-    #this needs a _lot_ of edits to make up to date
+    
+    #draw the current gamestate to the screen
     def draw(self, currAgent, mousePos):
 
         self.screen.fill(0)
@@ -462,33 +437,14 @@ class Qoridor:
                                      10)
             self.screen.blit(s, (0, 0))
             """
-
-    #gets value of a space, returns 7 if out of bounds
-    #should be unnecssary.  Replace with an "isoccupied" function.  Check if any agent is in that space.
-    #space will be passed as a point
-    #should be completely unneessary
-    def getSpace(self, space):
-        if space.X >= 0 and space.X <= self.gridSize and space.Y >= 0 and space.Y <= self.gridSize:
-            if(self.state.agentPositions[BoardElement.AGENT_TOP] == space):
-                return BoardElement.AGENT_TOP
-            elif(self.state.agentPositions[BoardElement.AGENT_BOT] == space):
-                return BoardElement.AGENT_BOT
-            else:
-                return BoardElement.EMPTY
-        else:
-            return BoardElement.OFF_GRID;
-
+    #returns if a specific space in grid is unoccupied
     def isClear(self, space):
         if space.X >= 0 and space.X <= self.gridSize and space.Y >= 0 and space.Y <= self.gridSize:
             return self.state.agentPositions[BoardElement.AGENT_TOP] != space and self.state.agentPositions[BoardElement.AGENT_BOT] != space
         else: #is off the grid, hence not clear
             return False
 
-    #adds 2d tuples
-    #should be completely unnecessary from here on out
-    #use point + point instead
-    def tupAdd(self, tup1, tup2):
-        return (tup1[0] + tup2[0], tup1[1] + tup2[1])
+
 
     #maybeMove needs to be changed to be an action.
     #actions have been updated to allow for comparison
@@ -514,7 +470,7 @@ class Qoridor:
     def getPawnMoves(self, space):
 
         #print "getting pawn moves ", space
-        moves = [space]
+        moves = []
         for action in [Point(0, 1), Point(0, -1), Point(1, 0), Point(-1, 0)]:
             target = space + action
             if self.isClear(target):
@@ -523,6 +479,7 @@ class Qoridor:
             elif self.isClear(target+action) and self.canMoveTo(space, target) and self.canMoveTo(target, target+action):
                 moves.append(target+action)
 
+            #diagonal jump checks deprecated and unused
                 """
             else: #now check diagonal jumps.
                 if neighbor[0] == 0:
@@ -548,7 +505,6 @@ class Qoridor:
         return moves
 
     #determine if there's a wall at this intersection.  if offboard, returns no wall
-    #this really shouldn't need to exist as it is.
     def isWall(self, x, y):
         if x < 0 or x > self.gridSize-2 or y < 0 or y > self.gridSize-2:
             return 0
@@ -562,7 +518,6 @@ class Qoridor:
         if (abs(end.X - start.X + end.Y-start.Y) != 1):
             #provided cells are not adjacent.
             return False
-
         if start.X == end.X:
             if(start.X - 1 >= 0) and self.isWall(start.X - 1, min(start.Y, end.Y)) == BoardElement.WALL_HORIZONTAL:
                 return False
@@ -577,7 +532,7 @@ class Qoridor:
 
 
 
-
+    #perform human action based on mouse click
     def playerAction(self, agent, mousePosition):
         #determine location of mouse in board
         move = self.getMoveFromMousePos(agent, mousePosition)
@@ -587,9 +542,7 @@ class Qoridor:
         else:
             return False
 
-    #this needs some hefty work to fic up.
-    #low priority, focus on AI functions for now
-    #agent is one of BoardElement.AGENT_TOP or AGENT_BOTTOM
+    #determine the move human player is trying to make bsaed on mouse coords.
     def getMoveFromMousePos(self, agent, mousePosition):
         color = self.screen.get_at(mousePosition)
         if color != self.wallColor and color != self.squareColor :
@@ -603,7 +556,7 @@ class Qoridor:
                 xCoord = self.gridSize-1
             if yCoord > self.gridSize-1:
                 yCoord = self.gridSize-1
-            return ('p', (xCoord, yCoord))
+            return Action(Action.PAWN, None, None, Point(xCoord, yCoord))
         else:
             boxSize = self.screen.get_width() / (self.gridSize);
             xCoord = int((mousePosition[0] - boxSize / 2) * (self.gridSize) / self.screen.get_width())
@@ -617,32 +570,13 @@ class Qoridor:
             if yCoord > (self.gridSize-2):
                 yCoord = (self.gridSize-2)
 
-            # determine orientation
-            # check if valid
-            # GO GO GO GO GO
-
             # determine location of target intersection
             actualLocation = ((xCoord + 1) * self.screen.get_width() / (self.gridSize), (yCoord + 1) * self.screen.get_width() / (self.gridSize));
             if (abs(mousePosition[0] - actualLocation[0]) > abs(mousePosition[1] - actualLocation[1])):
                 orientation = BoardElement.WALL_HORIZONTAL
             else:
                 orientation = BoardElement.WALL_VERTICAL
-            return ('w', (xCoord, yCoord), orientation)
-
-
-    #moves a pawn from one square to the next
-    #DEPRECATED, should literally never be called anymore.
-    def movePawn(self, agent, target):
-        #print("movePawn()")
-        #print(agent)
-        #print(target)
-        #rint("\n")
-        oldPos = self.agents[agent]
-        self.spaces[oldPos[0]][oldPos[1]] = -1
-        self.spaces[target[0]][target[1]] = agent
-        self.agents[agent] = target
-
-
+            return Action(Action.WALL, None, orientation, Point(xCoord, yCoord))
 
     #Use instead of addIntersection when only temporarily adding a wall
     #in order to check legality of a move
@@ -650,41 +584,12 @@ class Qoridor:
         #self.walls.append((location, orientation))
         self.state.intersections[location.X][location.Y] = orientation
 
-    #returns a complete list of all legal moves given player can make
-    #would be faster to return all walls, and then when they try a move, first check if it is valid.
-    #this needs to _really_ be fixed
-    #DEPRECATED DO NOT USE
-    '''
-    def getLegalActions(self, agent):
-        #first get legal pawn actions
-        moves = self.getPawnMoves(self.getAgentPosition(agent))
-        if self.wallCounts[agent] > 0:
-            for i in range(len(self.intersections)):
-                for j in range(len(self.intersections[i])):
-                    if not self.isWall(i, j):
-                        if not self.isWall(i, j + 1) == 1 and not self.isWall(i, j - 1) == 1:
-                            #ensure that there is still a possible path
-                            self.placeWall((i, j), 1)
-                            if self.pathExists(self.agents[0], self.gridSize-1) and self.pathExists(self.agents[1], 0):
-                                moves.append(('w', (i, j), 1))
-                            self.removeWall((i, j))
-                        if not self.isWall(i + 1, j) == 2 and not self.isWall(i - 1, j) == 2:
-                            #ensure that there will still be a possible path
-                            self.placeWall((i, j), 2)
-                            if self.pathExists(self.agents[0], self.gridSize-1) and self.pathExists(self.agents[1], 0):
-                                moves.append(('w', (i, j), 2))
-                            self.removeWall((i, j))
-        return moves
-    '''
-
-    #swap to using gameState object
     #used to undo temp placement for testing of validity
     def removeTempWall(self, location):
         #self.walls.pop()
         self.state.intersections[location.X][location.Y] = 0
 
-    #returns whether a certain move is legal. Takes absolutes
-    #TAG
+    #returns whether a certain move is legal.
     def isLegalMove(self, agent, move):
         #print("isLegalMove() move: ", move)
         if move.getType() == Action.PAWN:
@@ -715,7 +620,7 @@ class Qoridor:
                     return True
         return False
 
-    #edge is 0 or 8 to indicate which edge
-    #TAG probably
+    #determines if a path exists on the gameboard from the given space
+    #   to the target edge
     def pathExists(self, space, edge):
         return AStar(self, space, lambda square : square.Y == edge, lambda square : abs(square.Y - edge))[0] != -1

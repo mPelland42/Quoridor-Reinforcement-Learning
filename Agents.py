@@ -18,10 +18,11 @@ import random
 import os
 
 
+
 class Action:
+    #all possible actions
     PAWN = "PAWN"
     WALL = "WALL"
-
     UP = "UP"
     DOWN = "DOWN"
     LEFT = "LEFT"
@@ -33,8 +34,8 @@ class Action:
 
     PAWN_MOVES = 8
     TOP_K_SELECTION = 20
-    MOVE_PROBABILITY = .80
-    GAMMA = 0.90
+    MOVE_PROBABILITY = .70
+    GAMMA = 0.80
     greedy = True
 
     def __init__(self, actionType, direction = None, orientation = None, position = None):
@@ -139,6 +140,8 @@ class Agent:
 
         self.loss = 0
         self.recentLoss = 0
+        
+        
 
 
         self.dir = os.path.dirname(os.path.realpath(__file__))+"\\"
@@ -171,7 +174,7 @@ class Agent:
 
 
 
-        if self.game.getRandom() and (random.random() <= epsilon):
+        if (not self.humanPlaying) and self.game.getRandom() and (random.random() <= epsilon):
 
             return self.getRandomAction(agentType, currentStateVector, self.getRandomMoveSize())
 
@@ -382,19 +385,10 @@ class Agent:
 
 
 
-
-    def saveState(self, target = "agent.cpkt"):
-        saver = tf.train.Saver()
-        saver.save(self.sess, self.dir+target)
-        print("Saved!")
-
-    def loadState(self, target = "agent.cpkt"):
-        saver = tf.train.Saver()
-        saver.restore(self.sess, self.dir+target)
-
 class TopAgent(Agent):
-    def __init__(self, game, sess, model, memory, rewardInvalid):
+    def __init__(self, game, sess, model, memory, rewardInvalid, humanPlaying):
         Agent.__init__(self, game, BoardElement.AGENT_TOP, sess, model, memory, rewardInvalid)
+        self.humanPlaying = humanPlaying
         self.goal = self.game.getGridSize() - 1
 
 
@@ -406,19 +400,10 @@ class TopAgent(Agent):
 
         return actionIndex, self.allActions[actionIndex]
 
-
-    def save(self):
-        saver = tf.train.Saver()
-        saver.save(self.sess, "./topAgent.cpkt")
-
-    def load(self):
-        saver = tf.train.Saver()
-        saver.restore(self.sess, "./topAgent.cpkt")
-
-
 class BottomAgent(Agent):
-    def __init__(self, game, sess, model, memory, rewardInvalid):
+    def __init__(self, game, sess, model, memory, rewardInvalid, humanPlaying):
         Agent.__init__(self, game, BoardElement.AGENT_BOT, sess, model, memory, rewardInvalid)
+        self.humanPlaying = humanPlaying
         self.goal  = 0
 
 

@@ -21,8 +21,8 @@ class Memory:
             return random.sample(self._samples, len(self._samples))
         else:
             # include the most recent 3 for faster learning
-            #return self._samples[-3:] + random.sample(self._samples, no_samples)
-            return random.sample(self._samples, no_samples)
+            return self._samples[-3:] + random.sample(self._samples, no_samples)
+            #return random.sample(self._samples, no_samples)
         
     def getTotalMem(self):
         return len(self._samples)

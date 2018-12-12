@@ -8,13 +8,17 @@ Created on Wed Dec  5 13:48:37 2018
 import tensorflow as tf
 #import os
 import math
+import os
+
 LAYER_SIZE = 150
 
 keep_rate = 0.8
 keep_prob = tf.placeholder(tf.float32)
 
+dir = os.path.dirname(os.path.realpath(__file__))+"\\"
+
 class Model:
-    def __init__(self, num_states, gridSize, num_actions, batch_size):
+    def __init__(self, num_states, gridSize, num_actions, batch_size, restore, file):
         self._num_states = num_states
         self._num_actions = num_actions
         self._grid_size = gridSize
@@ -31,9 +35,19 @@ class Model:
         
         # now setup the model
         #self.defineCNN()
-        self.defineModel()
+        self.file = file
+        self.defineModel(restore, file)
+        self.saver = tf.train.Saver()
         
-    def defineModel(self):
+    def save(self, sess):
+        local = self.saver.save(sess, "./te/"+self.file)
+        print("saved to ", local)
+        
+    def load(self, sess):
+        self.saver.restore(sess, "./te/"+self.file)
+        
+        
+    def defineModel(self, restore, file):
         self._states = tf.placeholder(shape=[None, self._num_states], dtype=tf.float32)
         self._q_s_a = tf.placeholder(shape=[None, self._num_actions], dtype=tf.float32)
         
@@ -42,6 +56,7 @@ class Model:
         fc2 = tf.layers.dense(fc1, LAYER_SIZE, activation=tf.nn.relu)
         
         self._logits = tf.layers.dense(fc2, self._num_actions)
+        
         self.loss = tf.losses.mean_squared_error(self._q_s_a, self._logits)
         self._optimizer = tf.train.AdamOptimizer().minimize(self.loss)
         self._var_init = tf.global_variables_initializer()
