@@ -33,9 +33,9 @@ class Action:
     JUMP_RIGHT = "JUMP RIGHT"
 
     PAWN_MOVES = 8
-    TOP_K_SELECTION = 20
-    MOVE_PROBABILITY = .70
-    GAMMA = 0.80
+    #TOP_K_SELECTION = 16
+    MOVE_PROBABILITY = .80
+    GAMMA = 0.95
     greedy = True
 
     def __init__(self, actionType, direction = None, orientation = None, position = None):
@@ -46,6 +46,8 @@ class Action:
 
 
     def makeAllActions(gridSize):
+        
+        
 
         # define all possible actions
         allActions = list()
@@ -64,6 +66,7 @@ class Action:
             for x in range(gridSize - 1):
                 allActions.append(Action(Action.WALL, None, BoardElement.WALL_HORIZONTAL, Point(x, y)))
                 allActions.append(Action(Action.WALL, None, BoardElement.WALL_VERTICAL, Point(x, y)))
+
 
         return allActions
 
@@ -190,7 +193,7 @@ class Agent:
                     print(agentType)
                     print(self.game.state)
                     print(currentStateVector)
-                    values, indices = self.sess.run(tf.nn.top_k(q, len(q)-1))
+                    values, indices = self.sess.run(tf.nn.top_k(q, len(q)))
                     values = values.tolist()
                     indices = indices.tolist()
                     for i in indices:
@@ -203,11 +206,12 @@ class Agent:
                     # now we have to sort
                     # sort by best action, then run down the list until an action works
                     if values == None:
-                        values, indices = self.sess.run(tf.nn.top_k(q, Action.TOP_K_SELECTION))
+                        #values, indices = self.sess.run(tf.nn.top_k(q, Action.TOP_K_SELECTION))
+                        values, indices = self.sess.run(tf.nn.top_k(q, len(q)))
                         values = values.tolist()
                         indices = indices.tolist()
 
-                    for i in range(Action.TOP_K_SELECTION-1):
+                    for i in range(len(q)):
                         self.memory.addSample((currentStateVector, greedyAction, self.rewardInvalid, None))
                         self.learn()
                         greedyAction = indices[i+1]
@@ -252,11 +256,13 @@ class Agent:
             self.learn()
             actionsTried.append(randomAction)
             while True:
+                cnt += 1
                 randomAction = random.randint(0, self.getRandomMoveSize())
                 if randomAction not in actionsTried:
                     break
                 if cnt > 1000:
                     return -1
+                
 
         return randomAction
 
@@ -265,6 +271,7 @@ class Agent:
             moveSize = Action.PAWN_MOVES
         else:
             moveSize = self.actionSize-1
+            
         return moveSize
 
     def sample(self, distribution):

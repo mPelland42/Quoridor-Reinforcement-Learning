@@ -13,6 +13,7 @@ from Agents import Action
 from GameState import GameState
 from GameState import BoardElement
 from Point import Point
+import numpy as np
 
 from Agents import TopAgent
 from Agents import BottomAgent
@@ -23,18 +24,20 @@ pygame.init()
 
 
 #REWARDS
-REWARD_WIN = 0.75
-REWARD_LOSE = -0.90
+REWARD_WIN = 1.0
+REWARD_LOSE = -1.0
 
-REWARD_ILLEGAL = -0.30
-REWARD_GOOD_DIRECTION = -0.01
-REWARD_BAD_DIRECTION = -0.06
-REWARD_GOOD_WALL = 0.30
-REWARD_BAD_WALL = -0.05
+REWARD_ILLEGAL = -.50
+REWARD_GOOD_DIRECTION = -.01
+REWARD_BAD_DIRECTION = -.01
+REWARD_GOOD_WALL = -.01
+REWARD_BAD_WALL = -.01
+
+PREVIOUS_ACTIONS_LEN = 0
 
 
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 800
+SCREEN_WIDTH = 400
+SCREEN_HEIGHT = 400
 
 
 
@@ -61,6 +64,7 @@ class Qoridor:
         self.initialDraw = True
         self.currentlyDrawing = startWithDrawing
         self.random = True
+        self.predictGames = False
 
         self.printStuff = False
         self.printQ = False
@@ -75,6 +79,7 @@ class Qoridor:
         self.reset()
 
         self.localAvgGameLength = 0
+        self.winPredictionLoss = 0
         self.games = 0
         self.victories = {BoardElement.AGENT_TOP: 0, BoardElement.AGENT_BOT: 0}
 
@@ -108,7 +113,7 @@ class Qoridor:
         self.movesTaken = 0
         self.visited = []
         self.gameReward = 0
-        self.state = GameState(self.gridSize, self.numWalls)
+        self.state = GameState(self.gridSize, self.numWalls, PREVIOUS_ACTIONS_LEN)
 
         # also reset the visuals
         if self.currentlyDrawing or self.initialDraw:
@@ -147,7 +152,7 @@ class Qoridor:
 
                 agent = self.agents[currentAgent]
                 agentType = agent.getType()
-
+                
                 state = self.state.asVector(agentType)
 
 
@@ -166,11 +171,16 @@ class Qoridor:
 
                 self.movesTaken += 1
 
-                reward = self.performAction(agentType, action)
+
 
                 #reward += -self.state.getMovesTaken()
                 newState = self.state.asVector(agentType)
 
+
+                reward = self.performAction(agentType, action)
+                self.state.addAction(actionIndex, agentType)
+                
+                
                 if self.printStuff:
                     print("reward: ", reward)
 
@@ -200,6 +210,16 @@ class Qoridor:
                 if not self.state.getWinner() == None:
                     done = True
 
+
+                if(self.predictGames):
+                    p = self.model.predictOneProb(newState, self.sess)
+                    if agentType == BoardElement.AGENT_TOP:
+                        print("Predicting that top has {} chance of winning".format(p))
+                    else:
+                        print("Predicting that bot has {} chance of winning".format(p))
+                    self.predictGames = False
+                        
+                
                 previousState = state
                 previousActionIndex = actionIndex
                 previousReward = reward
@@ -238,8 +258,7 @@ class Qoridor:
                     elif event.key == pygame.K_h:
                         self.humanPlaying = not self.humanPlaying
                     elif event.key == pygame.K_s:
-                        if not self.humanPlaying:
-                            self.model.save(self.sess)
+                        self.model.save(self.sess)
                         
 
                     elif event.key == pygame.K_p:
@@ -248,6 +267,9 @@ class Qoridor:
 
                     elif event.key == pygame.K_q:
                         self.printQ = True
+                        
+                    elif event.key == pygame.K_w:
+                        self.predictGames = True
                 
                 if event.type == pygame.MOUSEBUTTONDOWN and self.humanPlaying and currentAgent == 1:
                     if self.playerAction(BoardElement.AGENT_TOP, pygame.mouse.get_pos()):
@@ -272,6 +294,11 @@ class Qoridor:
         # since they use the same model
         self.movesTillVictory.append(self.movesTaken)
         self.games += 1
+        self.memory.addStateWinMemory(self.state.getStateMemory())
+        
+        for i in range(3):
+            self.trainStateWinPrediction()
+            
         agent.getLoss()
         #print(" ", self.movesTaken, agent.getLoss())
         self.localAvgGameLength += self.movesTaken
@@ -301,6 +328,7 @@ class Qoridor:
 
     #display results of learning
     def printDetails(self, gamesPerEpoch):
+        self.model.save(self.sess)
         self.localAvgGameLength = self.localAvgGameLength / gamesPerEpoch
         self.recentRewardAvg = self.recentReward / gamesPerEpoch
         self.recentReward = 0
@@ -309,10 +337,12 @@ class Qoridor:
         print("Local Average Game Length: ", self.localAvgGameLength)
         print("Local Average Game Reward: ", self.recentRewardAvg)
         print("Local Average Loss: ", self.agents[0].getRecentLoss())
+        print("Local Win Prediction Loss: ", self.winPredictionLoss / gamesPerEpoch)
 
         print("Epsilon: "+"{:.6f}".format(self.epsilon))
 
         self.localAvgGameLength = 0
+        self.winPredictionLoss = 0
        # print("\nMoves/loss: ")
 
 
@@ -379,6 +409,21 @@ class Qoridor:
 
 
 
+    def trainStateWinPrediction(self):
+        batch = self.memory.sampleStateWinBatch()
+        
+        x = np.zeros((len(batch), self.model.getNumStates()))
+        y = np.zeros((len(batch), 1))
+        for i, b in enumerate(batch):
+            state, win = b[0], b[1]
+            
+            x[i] = state
+            y[i] = win
+            
+        _, l = self.model.trainBatchProb(self.sess, x, y)
+        self.winPredictionLoss += l
+
+
     def getStateSize(self):
         return len(self.state.asVector(BoardElement.AGENT_TOP))
 
@@ -403,9 +448,9 @@ class Qoridor:
         for i in range(self.gridSize):
             for j in range(self.gridSize):
                 pygame.draw.rect(self.screen, self.squareColor, [i*boxSize + shift, j*boxSize + shift, boxSize, boxSize], 10)
-        topAgentPos = self.state.agentPositions[BoardElement.AGENT_TOP]
+        topAgentPos = self.state.getPosition(BoardElement.AGENT_TOP)
         pygame.draw.circle(self.screen, self.agentColors[0], (int(topAgentPos.X * boxSize + boxSize/2 + shift), int(topAgentPos.Y * boxSize + boxSize/2 + shift)), int(boxSize * .25))
-        botAgentPos = self.state.agentPositions[BoardElement.AGENT_BOT]
+        botAgentPos = self.state.getPosition(BoardElement.AGENT_BOT)
         pygame.draw.circle(self.screen, self.agentColors[1], (int(botAgentPos.X * boxSize + boxSize/2 + shift), int(botAgentPos.Y * boxSize + boxSize/2 + shift)), int(boxSize * .25))
 
         #needs to be rewritten/readded to how things are structured.
@@ -440,7 +485,7 @@ class Qoridor:
     #returns if a specific space in grid is unoccupied
     def isClear(self, space):
         if space.X >= 0 and space.X <= self.gridSize and space.Y >= 0 and space.Y <= self.gridSize:
-            return self.state.agentPositions[BoardElement.AGENT_TOP] != space and self.state.agentPositions[BoardElement.AGENT_BOT] != space
+            return self.state.getPosition(BoardElement.AGENT_TOP) != space and self.state.getPosition(BoardElement.AGENT_BOT) != space
         else: #is off the grid, hence not clear
             return False
 
@@ -505,11 +550,11 @@ class Qoridor:
         return moves
 
     #determine if there's a wall at this intersection.  if offboard, returns no wall
-    def isWall(self, x, y):
+    def whatWall(self, x, y):
         if x < 0 or x > self.gridSize-2 or y < 0 or y > self.gridSize-2:
-            return 0
+            return BoardElement.OFF_GRID
         else:
-            return self.state.intersections[x][y]
+            return self.state.getIntersection(Point(x,y))
 
     #determines if there is a wall in between two adjacent square locations
     def canMoveTo(self, start, end):
@@ -519,14 +564,14 @@ class Qoridor:
             #provided cells are not adjacent.
             return False
         if start.X == end.X:
-            if(start.X - 1 >= 0) and self.isWall(start.X - 1, min(start.Y, end.Y)) == BoardElement.WALL_HORIZONTAL:
+            if(start.X - 1 >= 0) and (self.whatWall(start.X - 1, min(start.Y, end.Y)) == BoardElement.WALL_HORIZONTAL):
                 return False
-            if(start.X <= self.gridSize-1 and self.isWall(start.X, min(start.Y, end.Y)) == BoardElement.WALL_HORIZONTAL):
+            if(start.X <= self.gridSize-1) and (self.whatWall(start.X, min(start.Y, end.Y)) == BoardElement.WALL_HORIZONTAL):
                 return False
         else:
-            if(start.Y - 1 >= 0) and self.isWall(min(start.X, end.X), start.Y - 1) == BoardElement.WALL_VERTICAL:
+            if(start.Y - 1 >= 0) and (self.whatWall(min(start.X, end.X), start.Y - 1) == BoardElement.WALL_VERTICAL):
                 return False
-            if(start.Y <= self.gridSize-1 and self.isWall(min(start.X, end.X), start.Y) == BoardElement.WALL_VERTICAL):
+            if(start.Y <= self.gridSize-1) and (self.whatWall(min(start.X, end.X), start.Y) == BoardElement.WALL_VERTICAL):
                 return False
         return True
 
@@ -587,39 +632,37 @@ class Qoridor:
     #used to undo temp placement for testing of validity
     def removeTempWall(self, location):
         #self.walls.pop()
-        self.state.intersections[location.X][location.Y] = 0
+        self.state.intersections[location.X][location.Y] = BoardElement.EMPTY
 
     #returns whether a certain move is legal.
     def isLegalMove(self, agent, move):
-        #print("isLegalMove() move: ", move)
         if move.getType() == Action.PAWN:
-            legalMoves = self.getPawnMoves(self.state.agentPositions[agent])
+            legalMoves = self.getPawnMoves(self.state.getPosition(agent))
             for i in legalMoves:
                 #print("legalMoves: ", legalMoves)
                 if(i == move.position):
                     return True
             return False
         else:
-            if(self.state.walls[agent] == 0):
+            if self.state.getWallCount(agent) == 0:
                 return False
-            #print("lol: ", self.intersections[move[1][0]][move[1][1]])
-            #print("X: ", move[1][0])
-            #print("Y: ", move[1][1])
-            #print("intersection: ", self.intersections[move[1][0]][move[1][1]])
-            if(self.state.intersections[move.position.X][move.position.Y]) != 0:
+            
+            if self.state.getIntersection(move.getPosition()) != BoardElement.EMPTY:
                 return False
+            
             self.placeTempWall(move.position, move.orientation)
             if not self.pathExists(self.state.agentPositions[BoardElement.AGENT_TOP], self.gridSize-1) or not self.pathExists(self.state.agentPositions[BoardElement.AGENT_BOT], 0):
                 self.removeTempWall(move.position)
                 return False
             self.removeTempWall(move.position)
-            if not self.isWall(move.position.X, move.position.Y):
-                if move.orientation == BoardElement.WALL_VERTICAL  and not self.isWall(move.position.X, move.position.Y + 1) == BoardElement.WALL_VERTICAL and not self.isWall(move.position.X, move.position.Y - 1) == BoardElement.WALL_VERTICAL:
+            
+            if self.whatWall(move.position.X, move.position.Y) == BoardElement.EMPTY:
+                if move.orientation == BoardElement.WALL_VERTICAL  and not (self.whatWall(move.position.X, move.position.Y + 1) == BoardElement.WALL_VERTICAL) and not (self.whatWall(move.position.X, move.position.Y - 1) == BoardElement.WALL_VERTICAL):
                     return True
-                if move.orientation == BoardElement.WALL_HORIZONTAL and not self.isWall(move.position.X + 1, move.position.Y) == BoardElement.WALL_HORIZONTAL and not self.isWall(move.position.X - 1, move.position.Y) == BoardElement.WALL_HORIZONTAL:
+                if move.orientation == BoardElement.WALL_HORIZONTAL and not (self.whatWall(move.position.X + 1, move.position.Y) == BoardElement.WALL_HORIZONTAL) and not (self.whatWall(move.position.X - 1, move.position.Y) == BoardElement.WALL_HORIZONTAL):
                     return True
         return False
-
+    
     #determines if a path exists on the gameboard from the given space
     #   to the target edge
     def pathExists(self, space, edge):
